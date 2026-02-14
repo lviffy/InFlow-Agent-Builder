@@ -1,0 +1,687 @@
+const supabase = require('../config/supabase');
+const { buildContext, truncateMessage } = require('../utils/memory');
+const { chatWithAI } = require('../services/aiService');
+const { intelligentToolRouting, convertToAgentFormat } = require('../services/toolRouter');
+const { executeToolsDirectly: executeToolsDirectlyService, formatToolResponse } = require('../services/directToolExecutor');
+
+/**
+ * Main chat endpoint - handles conversation and AI response
+ * POST /api/chat
+ */
+async function chat(req, res) {
+  try {
+    const { agentId, userId, message, conversationId, systemPrompt, walletAddress } = req.body;
+
+    // Validation
+    if (!agentId || !userId || !message) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: agentId, userId, message' 
+      });
+    }
+
+    // Log wallet address for debugging
+    if (walletAddress) {
+      console.log('[Chat] User wallet address:', walletAddress);
+    } else {
+      console.log('[Chat] No wallet address provided');
+    }
+
+    // Truncate message if too long
+    const truncatedMessage = truncateMessage(message);
+
+    // Get or create conversation (with Supabase if available, otherwise in-memory)
+    let convId = conversationId;
+    let isNewConversation = false;
+    let messages = [];
+    let useSupabase = !!supabase; // Track whether we're using Supabase for this request
+
+    if (useSupabase) {
+      // Use Supabase for persistent conversation memory
+      if (!convId) {
+        // Create new conversation
+        const { data, error } = await supabase
+          .from('conversations')
+          .insert({ 
+            agent_id: agentId, 
+            user_id: userId, 
+            title: truncatedMessage.slice(0, 100) // Use first 100 chars as title
+          })
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error creating conversation:', error);
+          // If it's a foreign key error (agent doesn't exist), fall back to in-memory mode
+          if (error.code === '23503' || error.code === '22P02') {
+            console.log('[Chat] Agent not in database or invalid ID, falling back to memory-only mode');
+            convId = `temp-${Date.now()}`;
+            isNewConversation = true;
+            messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
+            // Disable Supabase for the rest of this request
+            useSupabase = false;
+          } else {
+            throw new Error('Failed to create conversation');
+          }
+        } else {
+          convId = data.id;
+          isNewConversation = true;
+        }
+      }
+
+      // Save user message (only if we're still using Supabase)
+      if (useSupabase) {
+        const { error: msgError } = await supabase
+          .from('conversation_messages')
+          .insert({ 
+            conversation_id: convId, 
+            role: 'user', 
+            content: truncatedMessage 
+          });
+
+        if (msgError) {
+          console.error('Error saving user message:', msgError);
+          // Don't throw, just log and continue in memory-only mode
+          console.log('[Chat] Continuing in memory-only mode');
+          messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
+        }
+      }
+
+      // Get conversation history (last 30 messages due to auto-cleanup)
+      if (useSupabase) {
+        const { data: messageData, error: fetchError } = await supabase
+          .from('conversation_messages')
+          .select('role, content, created_at')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: true });
+
+        if (fetchError) {
+          console.error('Error fetching messages:', fetchError);
+          console.log('[Chat] Using in-memory messages instead');
+          messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
+        } else {
+          messages = messageData;
+        }
+      }
+    } else {
+      // In-memory mode (no persistence) - Supabase not configured
+      console.log('[Chat] Running in memory-only mode (Supabase not configured)');
+      convId = conversationId || `temp-${Date.now()}`;
+      isNewConversation = !conversationId;
+      
+      // Create minimal message history for context
+      messages = [
+        { role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }
+      ];
+    }
+
+    // Check if the message requires tools using intelligent AI routing
+    console.log('[Chat] Analyzing message for tool requirements...');
+    
+    const routingPlan = await intelligentToolRouting(truncatedMessage, messages);
+    
+    console.log('[Chat] Routing analysis:', {
+      isOffTopic: routingPlan.is_off_topic,
+      requiresTools: routingPlan.requires_tools,
+      complexity: routingPlan.complexity,
+      executionType: routingPlan.execution_plan?.type,
+      toolCount: routingPlan.execution_plan?.steps?.length || 0
+    });
+    
+    // Guard rail: Reject off-topic questions
+    if (routingPlan.is_off_topic) {
+      const rejectionMessage = "I'm a blockchain operations assistant and can only help with blockchain-related tasks such as checking cryptocurrency prices, wallet balances, deploying tokens/NFTs, and managing transactions. Please ask me something related to blockchain or crypto operations.";
+      
+      // Save rejection message
+      await supabase
+        .from('conversation_messages')
+        .insert({ 
+          conversation_id: convId, 
+          role: 'assistant', 
+          content: rejectionMessage
+        });
+
+      return res.json({
+        conversationId: convId,
+        message: rejectionMessage,
+        isNewConversation,
+        messageCount: messages.length + 2,
+        offTopicRejection: true
+      });
+    }
+    
+    let aiResponse;
+    let toolResults = null;
+
+    if (routingPlan.requires_tools && routingPlan.execution_plan?.steps?.length > 0) {
+      // Filter missing_info: remove items that tools in the plan can resolve
+      const toolResolvablePatterns = [
+        /price/i, /eth.*price/i, /token.*price/i, /current.*price/i,
+        /balance/i, /wallet.*balance/i, /eth.*balance/i,
+        /token.*info/i, /contract.*info/i,
+        /convert.*eth.*usd/i, /usd.*value/i
+      ];
+      
+      const trulyMissingInfo = (routingPlan.missing_info || []).filter(info => {
+        // Keep only info that no tool can resolve
+        const isToolResolvable = toolResolvablePatterns.some(pattern => pattern.test(info));
+        if (isToolResolvable) {
+          console.log(`[Chat] Auto-resolving via tools: "${info}"`);
+        }
+        return !isToolResolvable;
+      });
+      
+      // Also check if "missing" info is actually in conversation context
+      const contextStr = messages.map(m => m.content).join(' ');
+      const finalMissingInfo = trulyMissingInfo.filter(info => {
+        // Check if the missing info might already be in conversation context
+        if (/address/i.test(info) && /0x[a-fA-F0-9]{40}/.test(contextStr)) {
+          console.log(`[Chat] Address found in context, removing from missing: "${info}"`);
+          return false;
+        }
+        if (/balance/i.test(info) && /\d+\.?\d*\s*ETH/i.test(contextStr)) {
+          console.log(`[Chat] Balance found in context, removing from missing: "${info}"`);
+          return false;
+        }
+        return true;
+      });
+
+      // Only ask for truly missing info that can't be resolved by tools or context
+      if (finalMissingInfo.length > 0) {
+        const missingInfoMessage = `I need some additional information to help you:\n${finalMissingInfo.map((info, i) => `${i + 1}. ${info}`).join('\n')}`;
+        
+        // Save AI response asking for more info (if using Supabase)
+        if (useSupabase) {
+          await supabase
+            .from('conversation_messages')
+            .insert({ 
+              conversation_id: convId, 
+              role: 'assistant', 
+              content: missingInfoMessage
+            });
+        }
+
+        return res.json({
+          conversationId: convId,
+          message: missingInfoMessage,
+          isNewConversation,
+          messageCount: messages.length + 2,
+          needsMoreInfo: true,
+          missingInfo: finalMissingInfo
+        });
+      }
+
+      // Convert routing plan to agent format
+      const tools = convertToAgentFormat(routingPlan);
+      
+      console.log('[Chat] Executing tools:', tools.map(t => `${t.tool}${t.next_tool ? ` → ${t.next_tool}` : ''}`).join(', '));
+      
+      try {
+        // Build context summary from recent messages for the agent
+        const recentMessages = messages.slice(-10);
+        
+        // Extract key data points from conversation history
+        const extractedData = [];
+        for (const msg of recentMessages) {
+          const content = msg.content || '';
+          // Extract wallet addresses
+          const addresses = content.match(/0x[a-fA-F0-9]{40}/g);
+          if (addresses) extractedData.push(`Wallet address: ${addresses[0]}`);
+          // Extract balances
+          const balanceMatch = content.match(/Balance.*?:\s*([\d.]+)\s*ETH/i) || content.match(/([\d.]+)\s*ETH/i);
+          if (balanceMatch) extractedData.push(`ETH Balance: ${balanceMatch[1]} ETH`);
+          // Extract prices
+          const priceMatch = content.match(/Current prices?:?\s*(.*)/i);
+          if (priceMatch) extractedData.push(`Previous price data: ${priceMatch[1]}`);
+        }
+        
+        const contextSummary = recentMessages
+          .map(m => `${m.role}: ${m.content}`)
+          .join('\n');
+        
+        const dataContext = extractedData.length > 0
+          ? `\n\nEXTRACTED DATA FROM CONVERSATION (use these values, do NOT ask user):\n${[...new Set(extractedData)].join('\n')}`
+          : '';
+        
+        // Enhance user message with conversation context and routing analysis
+        const enhancedMessage = `${routingPlan.analysis}\n\nConversation history:\n${contextSummary}${dataContext}\n\nCurrent user query: ${truncatedMessage}\n\nExecution plan: ${routingPlan.execution_plan.type} with ${routingPlan.execution_plan.steps.length} steps: ${routingPlan.execution_plan.steps.map(s => s.tool).join(' → ')}`;
+        
+        const agentResponse = await fetch('http://localhost:8000/agent/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tools: tools,
+            user_message: enhancedMessage,
+            private_key: null,
+            wallet_address: walletAddress || null
+          })
+        });
+
+        if (!agentResponse.ok) {
+          const errorText = await agentResponse.text();
+          throw new Error(`Agent backend error: ${agentResponse.status} - ${errorText}`);
+        }
+
+        const agentData = await agentResponse.json();
+        aiResponse = agentData.agent_response;
+        
+        // Clean up AI thinking/reasoning that leaks into responses
+        aiResponse = aiResponse
+          .replace(/^The user wants to[\s\S]*?(?:\n\n)/m, '')
+          .replace(/^I need to use the \w+ tool[\s\S]*?(?:\n\n)/m, '')
+          .replace(/^I'?ll compose[\s\S]*?(?:\n\n)/m, '')
+          .replace(/^\{\n\s+"to":[\s\S]*?^\}$/gm, '')
+          .replace(/^\{"to":\s*"[^"]+",\s*"subject":\s*"[^"]+",\s*"(?:body|text)":\s*"[^"]*"\}$/gm, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+        
+        // Format JSON data in the response for better display
+        aiResponse = aiResponse.replace(/```json\n([\s\S]*?)```/g, (match, json) => {
+          try {
+            const parsed = JSON.parse(json);
+            return '```json\n' + JSON.stringify(parsed, null, 2) + '\n```';
+          } catch {
+            return match;
+          }
+        });
+        
+        toolResults = {
+          tool_calls: agentData.tool_calls || [],
+          results: agentData.results || [],
+          routing_plan: routingPlan // Include routing plan for debugging
+        };
+        
+        console.log('[Chat] Agent backend response received with', agentData.tool_calls?.length || 0, 'tool calls');
+      } catch (agentError) {
+        console.error('[Chat] Agent backend failed:', agentError.message);
+        
+        // Check if it's an AI provider issue - if so, try direct tool execution
+        if (agentError.message?.includes('rate limited') || agentError.message?.includes('503') || agentError.message?.includes('AI provider')) {
+          console.log('[Chat] AI provider issue detected, attempting direct tool execution...');
+          
+          try {
+            const directExecResult = await executeToolsDirectlyService(routingPlan, truncatedMessage);
+            
+            if (directExecResult && directExecResult.results && directExecResult.results.length > 0 && directExecResult.results.some(r => r.success)) {
+              // Successfully executed tools directly!
+              console.log('[Chat] Direct tool execution succeeded');
+              aiResponse = formatToolResponse(directExecResult);
+              toolResults = {
+                tool_calls: directExecResult.tool_calls,
+                results: directExecResult.results,
+                routing_plan: routingPlan,
+                execution_mode: 'direct_fallback'
+              };
+            } else {
+              // Direct execution failed or produced no results
+              aiResponse = `I'm experiencing temporary issues with my AI providers. However, I identified what you need:\n\n**${routingPlan.analysis}**\n\nRequired tools:\n${routingPlan.execution_plan?.steps?.map((step, i) => `${i + 1}. ${step.tool} - ${step.reason}`).join('\n')}\n\nUnfortunately, I cannot execute these tools at the moment. Please try again in a few moments.`;
+            }
+          } catch (directError) {
+            console.error('[Chat] Direct tool execution failed:', directError.message);
+            aiResponse = `I'm experiencing temporary issues with my AI providers and could not execute the requested tools. Please try again in a moment, or contact support if this persists.`;
+          }
+        } else {
+          // For other errors, try fallback to simple chat
+          console.log('[Chat] Falling back to simple chat');
+          const defaultSystemPrompt = systemPrompt || 
+            `You are a specialized blockchain operations assistant. You help with blockchain-related tasks: cryptocurrency prices, wallet operations, token/NFT deployment, smart contracts, blockchain transactions, and sending email notifications about these operations.
+            
+            You can also compose and send emails when users ask. Extract the recipient, subject, and body from the user's request and use the send_email tool.
+            
+            If asked about topics unrelated to blockchain or email notifications (politics, news, general knowledge, weather, entertainment, etc.), respond: "I'm a blockchain operations assistant and can only help with blockchain-related tasks and email notifications. Please ask me something about cryptocurrency, tokens, NFTs, blockchain operations, or sending an email."
+            
+            The user's request analysis: ${routingPlan.analysis}. Provide clear, accurate, and concise responses. Use **bold** formatting sparingly and only for important terms or key points that need emphasis.`;
+          
+          const { context } = buildContext(messages, defaultSystemPrompt);
+          aiResponse = await chatWithAI(context);
+        }
+      }
+    } else {
+      // Simple conversational response (no tools needed)
+      console.log('[Chat] Simple conversation, using direct AI');
+      
+      const defaultSystemPrompt = systemPrompt || 
+        `You are a specialized blockchain operations assistant for BlockOps on Arbitrum Sepolia. You help with: cryptocurrency prices, wallet operations, token/NFT deployment, smart contracts, blockchain transactions, and email notifications.
+        
+        CRITICAL: If the user asks a question that requires blockchain data (prices, balances, calculations), and you don't have tools available, tell them what you would need to look up and suggest they ask directly (e.g., "fetch price of ETH", "check balance of 0x..."). 
+        
+        When data from previous messages is available in the conversation, USE IT to answer follow-up questions. If the user says "calculate" or "how much" after previous data was discussed, perform the calculation using that data.
+        
+        If asked about topics unrelated to blockchain or email notifications, respond: "I'm a blockchain operations assistant and can only help with blockchain-related tasks and email notifications. Please ask me something about cryptocurrency, tokens, NFTs, blockchain operations, or sending an email."
+        
+        Provide clear, accurate, and concise responses. Use **bold** formatting sparingly.`;
+      
+      const { context, tokenCount } = buildContext(messages, defaultSystemPrompt);
+      aiResponse = await chatWithAI(context);
+    }
+
+    // Save AI response (if Supabase is configured)
+    if (useSupabase) {
+      const { error: aiMsgError } = await supabase
+        .from('conversation_messages')
+        .insert({ 
+          conversation_id: convId, 
+          role: 'assistant', 
+          content: aiResponse,
+          tool_calls: toolResults
+        });
+
+      if (aiMsgError) {
+        console.error('Error saving AI message:', aiMsgError);
+        // Don't throw - we already have the response
+      }
+    } else {
+      console.log('[Chat] AI response generated (not persisted - Supabase not configured)');
+    }
+
+    // Return response
+    res.json({
+      conversationId: convId,
+      message: aiResponse,
+      isNewConversation,
+      messageCount: messages.length + 2, // +2 for the messages we just added
+      toolResults,
+      hasTools: !!toolResults,
+      memoryMode: useSupabase ? 'persistent' : 'temporary'
+    });
+
+  } catch (error) {
+    console.error('[Chat] Error:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to process message' 
+    });
+  }
+}
+
+/**
+ * List user's conversations
+ * GET /api/conversations?userId=xxx&agentId=xxx&limit=20
+ */
+async function listConversations(req, res) {
+  if (!supabase) {
+    return res.json({ 
+      conversations: [], 
+      count: 0,
+      message: 'Conversation history not available (Supabase not configured)' 
+    });
+  }
+
+  try {
+    const { userId, agentId, limit = 20 } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId parameter' });
+    }
+
+    let query = supabase
+      .from('conversations')
+      .select('id, agent_id, title, message_count, created_at, updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(parseInt(limit));
+
+    if (agentId) {
+      query = query.eq('agent_id', agentId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error listing conversations:', error);
+      throw new Error('Failed to list conversations');
+    }
+
+    res.json({ 
+      conversations: data,
+      count: data.length 
+    });
+
+  } catch (error) {
+    console.error('[List Conversations] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Get messages for a conversation
+ * GET /api/conversations/:conversationId/messages
+ */
+async function getMessages(req, res) {
+  if (!supabase) {
+    return res.status(503).json({ 
+      error: 'Conversation service not available. Supabase not configured.' 
+    });
+  }
+
+  try {
+    const { conversationId } = req.params;
+    const { limit = 50 } = req.query;
+
+    const { data, error } = await supabase
+      .from('conversation_messages')
+      .select('id, role, content, tool_calls, created_at')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+      .limit(parseInt(limit));
+
+    if (error) {
+      console.error('Error getting messages:', error);
+      throw new Error('Failed to get messages');
+    }
+
+    res.json({ 
+      messages: data,
+      count: data.length 
+    });
+
+  } catch (error) {
+    console.error('[Get Messages] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Get a single conversation
+ * GET /api/conversations/:conversationId
+ */
+async function getConversation(req, res) {
+  if (!supabase) {
+    return res.status(503).json({ 
+      error: 'Conversation service not available. Supabase not configured.' 
+    });
+  }
+
+  try {
+    const { conversationId } = req.params;
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('id, agent_id, user_id, title, message_count, created_at, updated_at')
+      .eq('id', conversationId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      throw error;
+    }
+
+    res.json({ conversation: data });
+
+  } catch (error) {
+    console.error('[Get Conversation] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Delete a conversation
+ * DELETE /api/conversations/:conversationId
+ */
+async function deleteConversation(req, res) {
+  if (!supabase) {
+    return res.status(503).json({ 
+      error: 'Conversation service not available. Supabase not configured.' 
+    });
+  }
+
+  try {
+    const { conversationId } = req.params;
+
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId);
+
+    if (error) {
+      console.error('Error deleting conversation:', error);
+      throw new Error('Failed to delete conversation');
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Conversation deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('[Delete Conversation] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Update conversation title
+ * PATCH /api/conversations/:conversationId
+ */
+async function updateConversation(req, res) {
+  if (!supabase) {
+    return res.status(503).json({ 
+      error: 'Conversation service not available. Supabase not configured.' 
+    });
+  }
+
+  try {
+    const { conversationId } = req.params;
+    const { title } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: 'Missing title' });
+    }
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .update({ title: title.slice(0, 200) })
+      .eq('id', conversationId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating conversation:', error);
+      throw new Error('Failed to update conversation');
+    }
+
+    res.json({ 
+      conversation: data,
+      message: 'Title updated successfully'
+    });
+
+  } catch (error) {
+    console.error('[Update Conversation] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Get database statistics (admin only)
+ * GET /api/admin/stats
+ */
+async function getStats(req, res) {
+  if (!supabase) {
+    return res.status(503).json({ 
+      error: 'Conversation service not available. Supabase not configured.' 
+    });
+  }
+
+  try {
+    // Check admin authorization
+    const authHeader = req.headers.authorization;
+    const expectedAuth = process.env.ADMIN_SECRET 
+      ? `Bearer ${process.env.ADMIN_SECRET}`
+      : null;
+
+    if (!expectedAuth || authHeader !== expectedAuth) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { data, error } = await supabase.rpc('get_database_stats');
+
+    if (error) {
+      console.error('Error getting stats:', error);
+      throw new Error('Failed to get statistics');
+    }
+
+    res.json({ stats: data[0] || {} });
+
+  } catch (error) {
+    console.error('[Get Stats] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Manual cleanup endpoint (admin only)
+ * POST /api/admin/cleanup
+ */
+async function runCleanup(req, res) {
+  if (!supabase) {
+    return res.status(503).json({ 
+      error: 'Conversation service not available. Supabase not configured.' 
+    });
+  }
+
+  try {
+    // Check admin authorization
+    const authHeader = req.headers.authorization;
+    const expectedAuth = process.env.ADMIN_SECRET 
+      ? `Bearer ${process.env.ADMIN_SECRET}`
+      : null;
+
+    if (!expectedAuth || authHeader !== expectedAuth) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const maxDelete = req.body.maxDelete || 100;
+
+    const { data, error } = await supabase.rpc('delete_stale_conversations', {
+      max_delete: maxDelete
+    });
+
+    if (error) {
+      console.error('Error running cleanup:', error);
+      throw new Error('Failed to run cleanup');
+    }
+
+    const deletedCount = data[0]?.deleted_count || 0;
+
+    res.json({ 
+      success: true,
+      deletedCount,
+      message: `Deleted ${deletedCount} stale conversation(s)`
+    });
+
+  } catch (error) {
+    console.error('[Cleanup] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+module.exports = {
+  chat,
+  listConversations,
+  getMessages,
+  getConversation,
+ deleteConversation,
+  updateConversation,
+  getStats,
+  runCleanup
+};
