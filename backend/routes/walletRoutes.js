@@ -1,26 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  wrapETH, 
-  unwrapETH, 
-  getTokenMetadata, 
-  getTransactionStatus, 
-  getWalletHistory 
+const {
+  getWalletInfo,
+  getOwnedObjectsList,
+  getTransactionStatus,
+  getWalletHistory,
+  getObjectInfo,
 } = require('../controllers/walletController');
 
-// Wrap ETH to WETH
-router.post('/wrap', wrapETH);
+// OCT balance + basic info for an address
+router.get('/info/:address', getWalletInfo);
 
-// Unwrap WETH to ETH
-router.post('/unwrap', unwrapETH);
+// All objects (tokens, NFTs) owned by an address
+router.get('/objects/:address', getOwnedObjectsList);
 
-// Get token metadata
-router.get('/token/:address', getTokenMetadata);
+// Transaction status by digest
+router.get('/tx/:digest', getTransactionStatus);
 
-// Get transaction status
-router.get('/tx/:hash', getTransactionStatus);
-
-// Get wallet transaction history
+// Recent transaction history for an address
 router.get('/history/:address', getWalletHistory);
+
+// Fetch any on-chain object by ID
+router.get('/object/:objectId', getObjectInfo);
 
 module.exports = router;

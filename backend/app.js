@@ -1,5 +1,5 @@
 const express = require('express');
-const { PORT, NETWORK_NAME, FACTORY_ADDRESS, NFT_FACTORY_ADDRESS } = require('./config/constants');
+const { PORT, NETWORK_NAME, TOKEN_FACTORY_PACKAGE_ID, NFT_FACTORY_PACKAGE_ID, ACTIVE_NETWORK } = require('./config/constants');
 
 // Import routes
 const tokenRoutes = require('./routes/tokenRoutes');
@@ -53,14 +53,14 @@ app.use('/allowance', allowanceRoutes);
 app.use('/contract-chat', contractChatRoutes);
 app.use('/email', emailRoutes);
 
-// Legacy routes for backwards compatibility
+// Legacy / convenience routes
 app.post('/deploy-token', require('./controllers/tokenController').deployToken);
 app.post('/deploy-nft-collection', require('./controllers/nftController').deployNFTCollection);
 app.post('/mint-nft', require('./controllers/nftController').mintNFT);
 app.get('/balance/:address', require('./controllers/transferController').getBalance);
-app.get('/token-info/:tokenAddress', require('./controllers/tokenController').getTokenInfo);
-app.get('/token-balance/:tokenAddress/:ownerAddress', require('./controllers/tokenController').getTokenBalance);
-app.get('/nft-info/:collectionAddress/:tokenId', require('./controllers/nftController').getNFTInfo);
+app.get('/token-info/:objectId', require('./controllers/tokenController').getTokenInfo);
+app.get('/token-balance/:address', require('./controllers/tokenController').getTokenBalance);
+app.get('/nft-info/:objectId', require('./controllers/nftController').getNFTInfo);
 
 // 404 handler
 app.use((req, res) => {
@@ -85,43 +85,34 @@ app.use((error, req, res, next) => {
 // Start server
 const server = app.listen(PORT, () => {
   console.log('\n' + '='.repeat(50));
-  console.log('🚀 n8nrollup Backend Server');
+  console.log('🚀 BlockOps Backend Server — OneChain');
   console.log('='.repeat(50));
-  console.log(`📡 Server running on port ${PORT}`);
-  console.log(`🌐 Network: ${NETWORK_NAME}`);
-  console.log(`🏭 TokenFactory: ${FACTORY_ADDRESS}`);
-  console.log(`🎨 NFTFactory: ${NFT_FACTORY_ADDRESS}`);
-  console.log('\n📍 API Endpoints:');
-  console.log('  Health Check:');
-  console.log('    GET  /health');
-  console.log('\n  Token Operations:');
-  console.log('    POST /token/deploy');
-  console.log('    GET  /token/info/:tokenAddress');
-  console.log('    GET  /token/balance/:tokenAddress/:ownerAddress');
-  console.log('\n  NFT Operations:');
-  console.log('    POST /nft/deploy-collection');
-  console.log('    POST /nft/mint');
-  console.log('    GET  /nft/info/:collectionAddress/:tokenId');
-  console.log('\n  Transfer Operations:');
-  console.log('    POST /transfer');
-  console.log('    GET  /transfer/balance/:address');
-  console.log('\n  Natural Language Executor:');
-  console.log('    GET  /nl-executor/discover/:contractAddress');
-  console.log('    POST /nl-executor/execute');
-  console.log('    POST /nl-executor/quick-execute');
-  console.log('\n  Contract Chat:');
-  console.log('    POST /contract-chat/ask             - Ask AI about a contract');
-  console.log('\n  Email:');
-  console.log('    POST /email/send                   - Send email (text/HTML/attachments)');
-  console.log('    POST /email/send-html              - Send HTML email');
-  console.log('    GET  /email/verify                 - Verify email connection');
-  console.log('\n  Arbitrum Orbit L3:');
-  console.log('    POST /api/orbit/config          - Create L3 config');
-  console.log('    GET  /api/orbit/config/:id      - Get config');
-  console.log('    GET  /api/orbit/configs         - List all configs');
-  console.log('    POST /api/orbit/deploy          - Deploy L3 chain');
-  console.log('    GET  /api/orbit/deploy/status/:id - Check deployment');
-  console.log('\n' + '='.repeat(50) + '\n');
+  console.log(`📡 Port: ${PORT}`);
+  console.log(`🌐 Network: ${NETWORK_NAME} (${ACTIVE_NETWORK})`);
+  console.log(`🏭 Token Factory Pkg: ${TOKEN_FACTORY_PACKAGE_ID || '(not deployed)'}`);
+  console.log(`🎨 NFT Factory Pkg:   ${NFT_FACTORY_PACKAGE_ID || '(not deployed)'}`);
+  console.log('\n📍 Endpoints:');
+  console.log('  GET  /health');
+  console.log('  POST /token/deploy                  Create Move token');
+  console.log('  GET  /token/info/:objectId           Token object info');
+  console.log('  GET  /token/balance/:address         OCT balance');
+  console.log('  POST /nft/deploy-collection          Create NFT collection');
+  console.log('  POST /nft/mint                       Mint NFT');
+  console.log('  GET  /nft/info/:objectId             NFT object info');
+  console.log('  POST /transfer                       Transfer OCT');
+  console.log('  POST /transfer/object                Transfer Move object');
+  console.log('  POST /transfer/prepare               Build PTB for wallet signing');
+  console.log('  GET  /transfer/balance/:address      OCT balance');
+  console.log('  GET  /wallet/info/:address           Wallet info');
+  console.log('  GET  /wallet/objects/:address        Owned objects');
+  console.log('  GET  /wallet/tx/:digest              Transaction status');
+  console.log('  GET  /wallet/history/:address        Tx history');
+  console.log('  GET  /nl-executor/module/:pkg/:mod   List Move functions');
+  console.log('  POST /nl-executor/preview            AI command preview');
+  console.log('  POST /nl-executor/execute            AI command execute');
+  console.log('  POST /contract-chat/ask              AI contract analysis');
+  console.log('  POST /email/send                     Send email');
+  console.log('='.repeat(50) + '\n');
 });
 
 // Graceful shutdown

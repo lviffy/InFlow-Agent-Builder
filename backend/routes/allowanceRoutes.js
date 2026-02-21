@@ -1,18 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  approveToken, 
-  revokeApproval, 
-  checkAllowance 
-} = require('../controllers/allowanceController');
+const { approveAllowance, revokeAllowance, getAllowance } = require('../controllers/allowanceController');
 
-// Approve token spending
-router.post('/approve', approveToken);
-
-// Revoke token approval
-router.post('/revoke', revokeApproval);
-
-// Check current allowance
-router.get('/check/:tokenAddress/:ownerAddress/:spenderAddress', checkAllowance);
+// Not supported on OneChain (Move object-capability model — no ERC-20 allowances)
+router.post('/approve', approveAllowance);
+router.post('/revoke', revokeAllowance);
+router.get('/check/:tokenAddress/:ownerAddress/:spenderAddress', getAllowance);
 
 module.exports = router;

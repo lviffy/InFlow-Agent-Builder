@@ -340,7 +340,7 @@ async function chat(req, res) {
       console.log('[Chat] Simple conversation, using direct AI');
       
       const defaultSystemPrompt = systemPrompt || 
-        `You are a specialized blockchain operations assistant for BlockOps on Arbitrum Sepolia. You help with: cryptocurrency prices, wallet operations, token/NFT deployment, smart contracts, blockchain transactions, and email notifications.
+        `You are a specialized blockchain operations assistant for BlockOps on OneChain (a Move-based blockchain). You help with: cryptocurrency prices, OCT wallet operations, Move token/NFT deployment, smart contracts, blockchain transactions, and email notifications.
         
         CRITICAL: If the user asks a question that requires blockchain data (prices, balances, calculations), and you don't have tools available, tell them what you would need to look up and suggest they ask directly (e.g., "fetch price of ETH", "check balance of 0x..."). 
         

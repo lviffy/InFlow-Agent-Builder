@@ -1,26 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const {
-  discoverContract,
-  executeCommand,
-  quickExecute
+  executeNLCommand,
+  previewNLCommand,
+  getModuleFunctions,
 } = require('../controllers/nlExecutorController');
 
 /**
- * Natural Language Contract Executor Routes
- * 
- * These routes enable AI-powered natural language interaction with any
- * Arbitrum Sepolia smart contract by fetching ABIs and mapping commands
- * to function calls.
+ * Natural Language Move Executor Routes
+ *
+ * AI-powered natural language → Move function call mapping on OneChain.
+ * Uses getMoveModule (RPC) instead of Etherscan to discover functions.
  */
 
-// Discovery: Get all available functions from a contract
-router.get('/discover/:contractAddress', discoverContract);
+// Discover: list all exposed functions in a Move module
+router.get('/module/:packageId/:moduleName', getModuleFunctions);
 
-// Execute: Map natural language command to function and execute
-router.post('/execute', executeCommand);
+// Preview: AI maps command to function without executing
+router.post('/preview', previewNLCommand);
 
-// Quick Execute: Auto-confirm and execute (use with caution)
-router.post('/quick-execute', quickExecute);
+// Execute: AI maps and executes the Move call
+router.post('/execute', executeNLCommand);
 
 module.exports = router;

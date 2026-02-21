@@ -51,7 +51,11 @@ const CRYPTO_MAPPINGS = {
   'arb': 'arbitrum',
   'arbitrum': 'arbitrum',
   'op': 'optimism',
-  'optimism': 'optimism'
+  'optimism': 'optimism',
+  'oct': 'octoken',
+  'octoken': 'octoken',
+  'onechain': 'octoken',
+  'one': 'octoken'
 };
 
 /**

@@ -4,10 +4,9 @@ const {
   GROQ_API_KEY,
   GEMINI_API_KEY,
   OPENAI_API_KEY,
-  ETHERSCAN_API_KEY,
-  ETHERSCAN_V2_BASE_URL,
-  ARBITRUM_SEPOLIA_CHAIN_ID
+  ACTIVE_NETWORK,
 } = require('../config/constants');
+const { getMoveModule, getMovePackage } = require('../utils/blockchain');
 const {
   successResponse,
   errorResponse,
@@ -84,7 +83,7 @@ function formatABIForPrompt(abi) {
 function buildSystemPrompt(contractAddress, abi) {
   const formattedABI = formatABIForPrompt(abi);
 
-  return `You are an expert smart contract analyst and assistant for the BlockOps Contract Explorer. You help users understand smart contracts deployed on Arbitrum Sepolia.
+  return `You are an expert Move smart contract analyst for the BlockOps Contract Explorer on OneChain (a Sui-compatible Move blockchain). You help users understand Move packages and modules deployed on OneChain.
 
 You are currently analyzing a contract at address: ${contractAddress}
 

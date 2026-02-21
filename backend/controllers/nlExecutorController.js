@@ -1,536 +1,251 @@
-const { ethers } = require('ethers');
-const axios = require('axios');
 const Groq = require('groq-sdk');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { 
-  ETHERSCAN_V2_BASE_URL, 
-  ARBITRUM_SEPOLIA_CHAIN_ID, 
-  ETHERSCAN_API_KEY,
-  GROQ_API_KEY,
-  GEMINI_API_KEY,
-  OPENAI_API_KEY 
+const { Transaction } = require('@mysten/sui/transactions');
+const {
+  GROQ_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY,
+  ACTIVE_NETWORK, NATIVE_TOKEN,
 } = require('../config/constants');
-const { getProvider, getWallet, getContract } = require('../utils/blockchain');
-const { 
-  successResponse, 
-  errorResponse, 
-  validateRequiredFields,
-  getTxExplorerUrl,
-  logTransaction 
+const {
+  getClient, getKeypair, getMoveModule, getMovePackage, executeTransaction,
+} = require('../utils/blockchain');
+const {
+  successResponse, errorResponse, validateRequiredFields,
+  getTxExplorerUrl, getPackageExplorerUrl, logTransaction,
 } = require('../utils/helpers');
 
-// Initialize AI clients
+// ── AI clients ──────────────────────────────────────────────────────────────
 let groqClient = null;
 if (GROQ_API_KEY) {
   groqClient = new Groq({ apiKey: GROQ_API_KEY });
-  console.log('✓ Groq client initialized for NL Executor (Primary)');
+  console.log('✓ Groq client initialized (NL Executor)');
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch and format functions from a Move module using the OneChain RPC.
+ * Replaces the old Etherscan ABI fetch.
+ */
+async function fetchMoveModuleFunctions(packageId, moduleName) {
+  const mod = await getMoveModule(packageId, moduleName);
+  if (!mod) throw new Error(`Module ${moduleName} not found in package ${packageId}`);
+
+  const exposed = mod.exposedFunctions ?? {};
+  return Object.entries(exposed).map(([name, def], index) => ({
+    index: index + 1,
+    name,
+    visibility: def.isEntry ? 'entry' : 'public',
+    typeParameters: def.typeParameters ?? [],
+    parameters: def.parameters ?? [],
+    returns: def.return ?? [],
+    signature: `${name}(${(def.parameters ?? []).join(', ')})`,
+  }));
 }
 
 /**
- * Fetch Contract ABI from Etherscan V2 API
- * @param {string} contractAddress - The contract address to fetch ABI for
- * @returns {Promise<Array>} Contract ABI
+ * Ask AI to map the user's natural language command to a Move function call.
  */
-async function fetchContractABI(contractAddress) {
-  if (!ETHERSCAN_API_KEY) {
-    throw new Error('ETHERSCAN_API_KEY not configured in environment variables');
-  }
-
-  const url = ETHERSCAN_V2_BASE_URL;
-  const params = {
-    chainid: ARBITRUM_SEPOLIA_CHAIN_ID,
-    module: 'contract',
-    action: 'getabi',
-    address: contractAddress,
-    apikey: ETHERSCAN_API_KEY
-  };
-
-  try {
-    const response = await axios.get(url, { params });
-    
-    if (response.data.status === '0') {
-      throw new Error(response.data.result || 'Failed to fetch ABI from Etherscan');
-    }
-
-    const abi = JSON.parse(response.data.result);
-    return abi;
-  } catch (error) {
-    if (error.response) {
-      throw new Error(`Etherscan API error: ${error.response.data?.result || error.message}`);
-    }
-    throw error;
-  }
-}
-
-/**
- * Parse and format functions from ABI
- * @param {Array} abi - Contract ABI
- * @returns {Array} Formatted function list
- */
-function parseFunctionsFromABI(abi) {
-  const functions = abi.filter(item => item.type === 'function');
-  
-  return functions.map((func, index) => {
-    const inputs = func.inputs
-      .map(input => `${input.name || 'param'}: ${input.type}`)
-      .join(', ');
-    
-    const outputs = func.outputs && func.outputs.length > 0
-      ? ' -> ' + func.outputs.map(output => output.type).join(', ')
-      : '';
-    
-    return {
-      index: index + 1,
-      name: func.name,
-      signature: `${func.name} (${inputs})${outputs}`,
-      stateMutability: func.stateMutability,
-      inputs: func.inputs,
-      outputs: func.outputs
-    };
-  });
-}
-
-/**
- * Use AI (Gemini/OpenAI) to map natural language to function call
- * @param {string} userCommand - Natural language command
- * @param {Array} functions - Available functions
- * @param {string} contractAddress - Contract address for context
- * @returns {Promise<Object>} Matched function and parameters
- */
-async function mapCommandToFunction(userCommand, functions, contractAddress) {
-  // Build the prompt for AI
-  const functionsList = functions.map(f => 
-    `[${f.index}] ${f.signature} (${f.stateMutability})`
+async function mapCommandToMoveCall(userCommand, functions, packageId, moduleName) {
+  const fnList = functions.map(f =>
+    `[${f.index}] ${f.signature}  [entry=${f.visibility === 'entry'}]`
   ).join('\n');
 
-  const prompt = `You are a smart contract interaction assistant. Given a list of available contract functions and a user's natural language command, determine which function to call and extract the parameters.
+  const prompt = `You are a Move smart-contract assistant on the OneChain blockchain.
+Given the public functions of the module "${moduleName}" in package "${packageId}", map the user's command to a function call.
 
-Contract Address: ${contractAddress}
-Available Functions:
-${functionsList}
+Available functions:
+${fnList}
 
-User Command: "${userCommand}"
+User command: "${userCommand}"
 
-Analyze the command and respond ONLY with a JSON object in this exact format:
+Respond ONLY with a JSON object:
 {
   "functionName": "exact_function_name",
-  "reasoning": "brief explanation of why this function matches",
-  "parameters": [
-    {
-      "name": "parameter_name",
-      "type": "parameter_type",
-      "value": "extracted_value"
-    }
-  ],
-  "needsDecimalConversion": true/false,
-  "decimals": 18
+  "reasoning": "brief explanation",
+  "typeArguments": [],
+  "arguments": [
+    { "name": "param_name", "moveType": "move_type_string", "value": "string_value" }
+  ]
 }
+Rules:
+- value must always be a plain string
+- For addresses use the full 0x... format
+- For u64/u128 amounts include the raw integer string (no decimals)
+- If info is missing set "error" key with explanation
+Respond ONLY with the JSON.`;
 
-Important rules:
-1. For token amounts, if user says "100 tokens" and it's an ERC20, set needsDecimalConversion=true with decimals=18
-2. Extract addresses in full format (0x...)
-3. Convert numeric strings to proper format based on type (uint256, etc.)
-4. If the command is unclear or missing information, set "error" field with explanation
-5. Match function names exactly as they appear in the list
+  let aiResponse;
 
-Respond ONLY with the JSON object, no other text.`;
-
-  try {
-    let aiResponse;
-
-    // Try Groq first (Primary)
-    if (groqClient) {
-      try {
-        const completion = await groqClient.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          max_tokens: 1000,
-          response_format: { type: 'json_object' }
-        });
-        
-        aiResponse = completion.choices[0].message.content;
-        console.log('AI response from Groq (Primary)');
-      } catch (groqError) {
-        console.error('Groq failed, trying fallbacks:', groqError.message);
-      }
-    }
-    
-    // Fallback to Gemini
-    if (!aiResponse && GEMINI_API_KEY) {
-      try {
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        aiResponse = response.text();
-        console.log('AI response from Gemini (Fallback)');
-      } catch (geminiError) {
-        console.error('Gemini failed:', geminiError.message);
-      }
-    }
-    
-    // Final fallback to OpenAI
-    if (!aiResponse && OPENAI_API_KEY) {
-      const OpenAI = require('openai');
-      const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-      
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4',
+  if (groqClient) {
+    try {
+      const completion = await groqClient.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
+        temperature: 0.2,
+        max_tokens: 800,
+        response_format: { type: 'json_object' },
       });
-      
       aiResponse = completion.choices[0].message.content;
-      console.log('AI response from OpenAI (Fallback)');
-    }
-    
-    if (!aiResponse) {
-      throw new Error('No AI API key configured. Please set GROQ_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY in environment variables.');
-    }
-
-    // Parse AI response
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('AI response did not contain valid JSON');
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    
-    if (parsed.error) {
-      throw new Error(parsed.error);
-    }
-
-    return parsed;
-  } catch (error) {
-    throw new Error(`AI mapping failed: ${error.message}`);
+    } catch (e) { console.warn('Groq failed:', e.message); }
   }
-}
 
-/**
- * Convert parameters to proper format for contract call
- * @param {Array} parameters - Parameters from AI mapping
- * @param {Object} functionInputs - Function input definitions from ABI
- * @param {boolean} needsDecimalConversion - Whether to apply decimal conversion
- * @param {number} decimals - Number of decimals for conversion
- * @returns {Array} Formatted parameters ready for contract call
- */
-function formatParameters(parameters, functionInputs, needsDecimalConversion = false, decimals = 18) {
-  return parameters.map((param, index) => {
-    const inputDef = functionInputs[index];
-    const paramType = inputDef.type;
-
-    let value = param.value;
-
-    // Handle decimal conversion for token amounts
-    if (needsDecimalConversion && (paramType === 'uint256' || paramType.startsWith('uint'))) {
-      // Check if this looks like a token amount (not already in wei format)
-      if (value.toString().length < 18) {
-        value = ethers.parseUnits(value.toString(), decimals).toString();
-      }
-    }
-
-    // Type conversions
-    if (paramType === 'address') {
-      return ethers.getAddress(value); // Validate and checksum address
-    } else if (paramType === 'uint256' || paramType.startsWith('uint')) {
-      return BigInt(value);
-    } else if (paramType === 'int256' || paramType.startsWith('int')) {
-      return BigInt(value);
-    } else if (paramType === 'bool') {
-      return value === 'true' || value === true;
-    } else if (paramType === 'bytes' || paramType.startsWith('bytes')) {
-      return value;
-    } else if (paramType === 'string') {
-      return value.toString();
-    }
-
-    return value;
-  });
-}
-
-/**
- * Discovery Phase: Get Contract Functions
- * GET /nl-executor/discover/:contractAddress
- */
-async function discoverContract(req, res) {
-  try {
-    const { contractAddress } = req.params;
-
-    // Validate contract address (normalize to lowercase to avoid EIP-55 checksum rejections)
-    if (!ethers.isAddress(contractAddress.toLowerCase())) {
-      return res.status(400).json(
-        errorResponse('Invalid contract address format')
-      );
-    }
-
-    logTransaction('Contract Discovery', { contractAddress });
-
-    // Fetch ABI from Etherscan
-    const abi = await fetchContractABI(contractAddress);
-    
-    // Parse functions
-    const functions = parseFunctionsFromABI(abi);
-
-    // Categorize functions
-    const readFunctions = functions.filter(f => 
-      f.stateMutability === 'view' || f.stateMutability === 'pure'
-    );
-    const writeFunctions = functions.filter(f => 
-      f.stateMutability !== 'view' && f.stateMutability !== 'pure'
-    );
-
-    return res.json(
-      successResponse({
-        contractAddress,
-        totalFunctions: functions.length,
-        readFunctions: readFunctions.map(f => `[${f.index}] ${f.signature}`),
-        writeFunctions: writeFunctions.map(f => `[${f.index}] ${f.signature}`),
-        allFunctions: functions
-      }, 'Contract functions discovered successfully')
-    );
-
-  } catch (error) {
-    console.error('Discovery error:', error);
-    
-    // Provide better error messages for common issues
-    let errorMessage = error.message;
-    let statusCode = 500;
-    
-    if (error.message.includes('Contract source code not verified')) {
-      errorMessage = 'Contract source code is not verified on Etherscan. To use this contract, please verify it on Arbiscan (https://sepolia.arbiscan.io) or use a verified contract address.';
-      statusCode = 400;
-    } else if (error.message.includes('ETHERSCAN_API_KEY not configured')) {
-      errorMessage = 'Etherscan API key is not configured. Please set ETHERSCAN_API_KEY in environment variables.';
-      statusCode = 500;
-    }
-    
-    return res.status(statusCode).json(
-      errorResponse('Failed to discover contract', errorMessage)
-    );
+  if (!aiResponse && GEMINI_API_KEY) {
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const result = await model.generateContent(prompt);
+      aiResponse = (await result.response).text();
+    } catch (e) { console.warn('Gemini failed:', e.message); }
   }
+
+  if (!aiResponse && OPENAI_API_KEY) {
+    const OpenAI = require('openai');
+    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+    });
+    aiResponse = completion.choices[0].message.content;
+  }
+
+  if (!aiResponse) throw new Error('No AI API key configured (GROQ_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY)');
+
+  const match = aiResponse.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('AI did not return valid JSON');
+  const parsed = JSON.parse(match[0]);
+  if (parsed.error) throw new Error(parsed.error);
+  return parsed;
 }
 
 /**
- * Execution Phase: Execute Natural Language Command
+ * Build a PTB argument from an AI-returned argument object.
+ */
+function buildTxArg(tx, arg) {
+  const t = (arg.moveType ?? '').toLowerCase();
+  const v = arg.value;
+
+  if (t === 'address') return tx.pure.address(v);
+  if (t === 'bool') return tx.pure.bool(v === 'true' || v === true);
+  if (t === 'u8') return tx.pure.u8(Number(v));
+  if (t === 'u16') return tx.pure.u16(Number(v));
+  if (t === 'u32') return tx.pure.u32(Number(v));
+  if (t === 'u64') return tx.pure.u64(BigInt(v));
+  if (t === 'u128') return tx.pure.u128(BigInt(v));
+  if (t === 'u256') return tx.pure.u256(BigInt(v));
+  if (t === 'vector<u8>') return tx.pure.vector('u8', Array.from(Buffer.from(v)));
+  if (t === 'string' || t === '0x1::string::string') return tx.pure.vector('u8', Array.from(Buffer.from(v)));
+  // Default: treat as object reference
+  return tx.object(v);
+}
+
+// ── Route handlers ────────────────────────────────────────────────────────────
+
+/**
  * POST /nl-executor/execute
+ * Body: { privateKey, packageId, moduleName, userCommand, sharedObjects? }
+ *
+ * sharedObjects: optional map { "objectId": "mutable_ref|immutable_ref" }
+ * to provide shared-object references that can't be inferred from args alone.
  */
-async function executeCommand(req, res) {
+async function executeNLCommand(req, res) {
   try {
-    const { 
-      contractAddress, 
-      command, 
-      privateKey,
-      confirmExecution = false,
-      decimals = 18
-    } = req.body;
+    const { privateKey, packageId, moduleName, userCommand, sharedObjects = {} } = req.body;
+    const validationError = validateRequiredFields(req.body, ['privateKey', 'packageId', 'moduleName', 'userCommand']);
+    if (validationError) return res.status(400).json(validationError);
 
-    // Validate required fields
-    const validationError = validateRequiredFields(req.body, [
-      'contractAddress', 
-      'command', 
-      'privateKey'
-    ]);
-    if (validationError) {
-      return res.status(400).json(validationError);
-    }
+    logTransaction('NL Execute', { packageId, moduleName, userCommand });
 
-    // Validate contract address (normalize to lowercase to avoid EIP-55 checksum rejections)
-    if (!ethers.isAddress(contractAddress.toLowerCase())) {
-      return res.status(400).json(
-        errorResponse('Invalid contract address format')
-      );
-    }
+    const keypair = getKeypair(privateKey);
+    const senderAddress = keypair.toSuiAddress();
 
-    logTransaction('NL Command Execution', { contractAddress, command });
+    // 1. Fetch module functions
+    const functions = await fetchMoveModuleFunctions(packageId, moduleName);
+    if (functions.length === 0)
+      return res.status(400).json(errorResponse(`No public functions found in ${moduleName}`));
 
-    // Step 1: Fetch ABI
-    const abi = await fetchContractABI(contractAddress);
-    const functions = parseFunctionsFromABI(abi);
+    // 2. AI mapping
+    const mapping = await mapCommandToMoveCall(userCommand, functions, packageId, moduleName);
 
-    // Step 2: Map command to function using AI
-    const mapping = await mapCommandToFunction(command, functions, contractAddress);
-    
-    // Find the function definition
-    const targetFunction = functions.find(f => f.name === mapping.functionName);
-    if (!targetFunction) {
-      return res.status(400).json(
-        errorResponse('Function not found in contract', {
-          suggestedFunction: mapping.functionName,
-          availableFunctions: functions.map(f => f.name)
-        })
-      );
-    }
+    // 3. Build PTB
+    const tx = new Transaction();
+    const args = (mapping.arguments ?? []).map(arg => buildTxArg(tx, arg));
 
-    // Step 3: Format parameters
-    const formattedParams = formatParameters(
-      mapping.parameters,
-      targetFunction.inputs,
-      mapping.needsDecimalConversion,
-      mapping.decimals || decimals
-    );
+    tx.moveCall({
+      target: `${packageId}::${moduleName}::${mapping.functionName}`,
+      typeArguments: mapping.typeArguments ?? [],
+      arguments: args,
+    });
 
-    // Build execution plan
-    const executionPlan = {
-      contractAddress,
-      functionName: mapping.functionName,
-      signature: targetFunction.signature,
-      parameters: mapping.parameters.map((p, i) => ({
-        name: p.name,
-        type: p.type,
-        rawValue: p.value,
-        formattedValue: formattedParams[i].toString()
-      })),
+    // 4. Execute
+    const result = await executeTransaction(tx, keypair);
+    const digest = result.digest;
+
+    return res.json(successResponse({
+      message: 'Command executed successfully',
+      userCommand,
+      functionCalled: `${packageId}::${moduleName}::${mapping.functionName}`,
       reasoning: mapping.reasoning,
-      isReadOnly: targetFunction.stateMutability === 'view' || targetFunction.stateMutability === 'pure'
-    };
-
-    // If not confirmed, return the plan for user confirmation
-    if (!confirmExecution) {
-      return res.json(
-        successResponse({
-          message: 'Execution plan generated. Review and confirm to proceed.',
-          executionPlan,
-          confirmation: 'To execute, send the same request with "confirmExecution": true'
-        }, 'Command mapped successfully')
-      );
-    }
-
-    // Step 4: Execute the transaction
-    const provider = getProvider();
-    const wallet = getWallet(privateKey, provider);
-
-    // Check balance
-    const balance = await provider.getBalance(wallet.address);
-    if (balance === 0n && !executionPlan.isReadOnly) {
-      return res.status(400).json(
-        errorResponse('Insufficient balance for gas fees', 
-          'Please fund your wallet with ETH on Arbitrum Sepolia')
-      );
-    }
-
-    // Create contract instance
-    const contract = getContract(contractAddress, abi, wallet);
-    const contractMethod = contract[mapping.functionName];
-
-    if (!contractMethod) {
-      return res.status(500).json(
-        errorResponse('Method not found on contract instance')
-      );
-    }
-
-    // Execute based on function type
-    if (executionPlan.isReadOnly) {
-      // Read-only call (no transaction)
-      const result = await contractMethod(...formattedParams);
-      
-      return res.json(
-        successResponse({
-          executionPlan,
-          result: result.toString(),
-          type: 'read-only'
-        }, 'Read-only function executed successfully')
-      );
-    } else {
-      // State-changing transaction
-      
-      // Simulate first with staticCall
-      try {
-        await contractMethod.staticCall(...formattedParams);
-      } catch (simulationError) {
-        return res.status(400).json(
-          errorResponse('Transaction simulation failed', {
-            reason: simulationError.message,
-            executionPlan
-          })
-        );
-      }
-
-      // Estimate gas
-      let gasEstimate;
-      try {
-        gasEstimate = await contractMethod.estimateGas(...formattedParams);
-        const gasBuffer = gasEstimate * 12n / 10n; // 20% buffer
-        
-        // Check if balance is sufficient for gas
-        const feeData = await provider.getFeeData();
-        if (feeData.gasPrice) {
-          const estimatedCost = gasBuffer * feeData.gasPrice;
-          if (balance < estimatedCost) {
-            return res.status(400).json(
-              errorResponse('Insufficient balance for gas fees', {
-                balance: ethers.formatEther(balance),
-                estimatedCost: ethers.formatEther(estimatedCost)
-              })
-            );
-          }
-        }
-      } catch (estimateError) {
-        console.warn('Gas estimation failed:', estimateError.message);
-      }
-
-      // Send transaction
-      const tx = gasEstimate
-        ? await contractMethod(...formattedParams, { gasLimit: gasEstimate * 12n / 10n })
-        : await contractMethod(...formattedParams);
-
-      console.log('Transaction sent:', tx.hash);
-
-      // Wait for confirmation
-      const receipt = await tx.wait();
-      console.log('Transaction confirmed in block:', receipt.blockNumber);
-
-      return res.json(
-        successResponse({
-          executionPlan,
-          transaction: {
-            hash: tx.hash,
-            blockNumber: receipt.blockNumber,
-            gasUsed: receipt.gasUsed.toString(),
-            status: receipt.status === 1 ? 'success' : 'failed',
-            explorerUrl: getTxExplorerUrl(tx.hash)
-          }
-        }, 'Transaction executed successfully')
-      );
-    }
-
+      argumentsUsed: mapping.arguments,
+      transactionDigest: digest,
+      sender: senderAddress,
+      network: ACTIVE_NETWORK,
+      explorerUrl: getTxExplorerUrl(digest),
+      packageExplorerUrl: getPackageExplorerUrl(packageId),
+    }));
   } catch (error) {
-    console.error('Execution error:', error);
-    
-    // Provide better error messages for common issues
-    let errorMessage = error.message;
-    let statusCode = 500;
-    
-    if (error.message.includes('Contract source code not verified')) {
-      errorMessage = 'Contract source code is not verified on Etherscan. Please verify the contract or use a verified contract address.';
-      statusCode = 400;
-    } else if (error.message.includes('ETHERSCAN_API_KEY not configured')) {
-      errorMessage = 'Etherscan API key is not configured. Please set ETHERSCAN_API_KEY in environment variables.';
-      statusCode = 500;
-    } else if (error.message.includes('No AI API key configured')) {
-      errorMessage = 'No AI API key configured. Please set GROQ_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY.';
-      statusCode = 500;
-    }
-    
-    return res.status(statusCode).json(
-      errorResponse('Failed to execute command', errorMessage)
-    );
+    console.error('NL Execute error:', error);
+    return res.status(500).json(errorResponse(error.message));
   }
 }
 
 /**
- * Quick Execute with Auto-confirmation (Use with caution)
- * POST /nl-executor/quick-execute
+ * POST /nl-executor/preview
+ * Same as execute but dry-runs (no keypair needed) — returns AI mapping only.
+ * Body: { packageId, moduleName, userCommand }
  */
-async function quickExecute(req, res) {
-  // Set confirmExecution to true automatically
-  req.body.confirmExecution = true;
-  return executeCommand(req, res);
+async function previewNLCommand(req, res) {
+  try {
+    const { packageId, moduleName, userCommand } = req.body;
+    const validationError = validateRequiredFields(req.body, ['packageId', 'moduleName', 'userCommand']);
+    if (validationError) return res.status(400).json(validationError);
+
+    const functions = await fetchMoveModuleFunctions(packageId, moduleName);
+    const mapping = await mapCommandToMoveCall(userCommand, functions, packageId, moduleName);
+
+    return res.json(successResponse({
+      userCommand,
+      packageId,
+      moduleName,
+      availableFunctions: functions,
+      aiMapping: mapping,
+      wouldCall: `${packageId}::${moduleName}::${mapping.functionName}`,
+      network: ACTIVE_NETWORK,
+    }));
+  } catch (error) {
+    return res.status(500).json(errorResponse(error.message));
+  }
 }
 
-module.exports = {
-  discoverContract,
-  executeCommand,
-  quickExecute
-};
+/**
+ * GET /nl-executor/module/:packageId/:moduleName
+ * Returns all exposed functions of a Move module (replaces old ABI fetch).
+ */
+async function getModuleFunctions(req, res) {
+  try {
+    const { packageId, moduleName } = req.params;
+    const functions = await fetchMoveModuleFunctions(packageId, moduleName);
+
+    return res.json(successResponse({
+      packageId,
+      moduleName,
+      functions,
+      network: ACTIVE_NETWORK,
+      packageExplorerUrl: getPackageExplorerUrl(packageId),
+    }));
+  } catch (error) {
+    return res.status(500).json(errorResponse(error.message));
+  }
+}
+
+module.exports = { executeNLCommand, previewNLCommand, getModuleFunctions };

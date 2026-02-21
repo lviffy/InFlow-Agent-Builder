@@ -9,7 +9,7 @@ router.post('/deploy-collection', deployNFTCollection);
 // Mint NFT
 router.post('/mint', mintNFT);
 
-// NFT information
-router.get('/info/:collectionAddress/:tokenId', getNFTInfo);
+// NFT object info by on-chain object ID
+router.get('/info/:objectId', getNFTInfo);
 
 module.exports = router;

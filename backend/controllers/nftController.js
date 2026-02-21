@@ -1,210 +1,117 @@
-const { ethers } = require('ethers');
-const { NFT_FACTORY_ADDRESS } = require('../config/constants');
-const { NFT_FACTORY_ABI, ERC721_COLLECTION_ABI } = require('../config/abis');
-const { getProvider, getWallet, getContract, parseEventFromReceipt } = require('../utils/blockchain');
-const { 
-  successResponse, 
-  errorResponse, 
-  validateRequiredFields, 
-  getTxExplorerUrl, 
-  getAddressExplorerUrl,
-  logTransaction 
+const { Transaction } = require('@mysten/sui/transactions');
+const { NFT_FACTORY_PACKAGE_ID, ACTIVE_NETWORK, NATIVE_TOKEN } = require('../config/constants');
+const { getKeypair, getBalance, executeTransaction, getObject } = require('../utils/blockchain');
+const {
+  successResponse, errorResponse, validateRequiredFields,
+  getTxExplorerUrl, getObjectExplorerUrl, getPackageExplorerUrl, logTransaction,
 } = require('../utils/helpers');
 
-/**
- * Deploy NFT Collection via Stylus NFTFactory
- */
 async function deployNFTCollection(req, res) {
   try {
-    const { privateKey, name, symbol, baseURI } = req.body;
-
-    // Validate required fields
-    const validationError = validateRequiredFields(req.body, ['privateKey', 'name', 'symbol', 'baseURI']);
-    if (validationError) {
-      return res.status(400).json(validationError);
-    }
-
-    // Check if factory is configured
-    if (NFT_FACTORY_ADDRESS === '0x0000000000000000000000000000000000000000') {
-      return res.status(500).json(
-        errorResponse('NFTFactory contract address not configured. Please set NFT_FACTORY_ADDRESS in environment variables.')
-      );
-    }
-
-    const provider = getProvider();
-    const wallet = getWallet(privateKey, provider);
-
-    // Check balance for gas
-    const balance = await provider.getBalance(wallet.address);
-    logTransaction('Deploy NFT Collection', { name, symbol, baseURI, balance: ethers.formatEther(balance) });
-    
-    if (balance === 0n) {
-      return res.status(400).json(
-        errorResponse('Insufficient balance for gas fees', 'Please fund your wallet with ETH on Arbitrum Sepolia')
-      );
-    }
-
-    // Connect to factory
-    const factory = getContract(NFT_FACTORY_ADDRESS, NFT_FACTORY_ABI, wallet);
-
-    // Estimate gas
-    let gasEstimate;
-    let estimatedCost = null;
-    try {
-      gasEstimate = await factory.create_collection.estimateGas(name, symbol, baseURI);
-      
-      const feeData = await provider.getFeeData();
-      if (feeData.gasPrice) {
-        const estimatedCostWei = gasEstimate * feeData.gasPrice;
-        estimatedCost = ethers.formatEther(estimatedCostWei);
-        
-        const gasBuffer = estimatedCostWei * 12n / 10n;
-        if (balance < gasBuffer) {
-          return res.status(400).json(
-            errorResponse('Insufficient balance for gas fees', {
-              balance: ethers.formatEther(balance),
-              estimatedCost: estimatedCost,
-              required: ethers.formatEther(gasBuffer)
-            })
-          );
-        }
-      }
-    } catch (estimateError) {
-      console.warn('Gas estimation failed:', estimateError.message);
-    }
-
-    // Create collection
-    const tx = gasEstimate
-      ? await factory.create_collection(name, symbol, baseURI, { gasLimit: gasEstimate * 12n / 10n })
-      : await factory.create_collection(name, symbol, baseURI);
-    
-    console.log('Transaction sent:', tx.hash);
-
-    // Wait for confirmation
-    const receipt = await tx.wait();
-    console.log('Transaction confirmed in block:', receipt.blockNumber);
-
-    // Parse event to get collection address
-    const factoryInterface = new ethers.Interface(NFT_FACTORY_ABI);
-    const eventArgs = parseEventFromReceipt(receipt, factoryInterface, 'CollectionCreated');
-    
-    if (!eventArgs) {
-      throw new Error('Failed to parse CollectionCreated event from receipt');
-    }
-
-    const collectionAddress = eventArgs.collection_address;
-    console.log('NFT Collection created at:', collectionAddress);
-
-    return res.json(
-      successResponse({
-        message: 'NFT Collection deployed successfully via Stylus NFTFactory',
-        collectionAddress: collectionAddress,
-        transactionHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString(),
-        estimatedCost: estimatedCost,
-        creator: wallet.address,
-        collectionInfo: { name, symbol, baseURI },
-        explorerUrl: getAddressExplorerUrl(collectionAddress),
-        transactionUrl: getTxExplorerUrl(receipt.hash)
-      })
-    );
-
+    const { privateKey, name, symbol, baseUrl = '', totalSupply = 0, factoryObjectId } = req.body;
+    const validationError = validateRequiredFields(req.body, ['privateKey', 'name', 'symbol', 'factoryObjectId']);
+    if (validationError) return res.status(400).json(validationError);
+    if (!NFT_FACTORY_PACKAGE_ID || NFT_FACTORY_PACKAGE_ID === '0x0')
+      return res.status(500).json(errorResponse('NFT_FACTORY_PACKAGE_ID not configured'));
+    const keypair = getKeypair(privateKey);
+    const senderAddress = keypair.toSuiAddress();
+    logTransaction('Create NFT Collection', { name, symbol, sender: senderAddress });
+    const balanceInfo = await getBalance(senderAddress);
+    if (BigInt(balanceInfo.totalBalance) === 0n)
+      return res.status(400).json(errorResponse('No OCT for gas. Get testnet OCT from https://faucet-testnet.onelabs.cc'));
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${NFT_FACTORY_PACKAGE_ID}::factory::create_collection`,
+      arguments: [
+        tx.object(factoryObjectId),
+        tx.pure.vector('u8', Array.from(Buffer.from(name))),
+        tx.pure.vector('u8', Array.from(Buffer.from(symbol))),
+        tx.pure.vector('u8', Array.from(Buffer.from(baseUrl))),
+        tx.pure.u64(BigInt(totalSupply)),
+      ],
+    });
+    const result = await executeTransaction(tx, keypair);
+    const digest = result.digest;
+    const created = result.objectChanges?.filter(c => c.type === 'created') ?? [];
+    const collectionObj = created.find(o => o.objectType?.includes('::factory::Collection'));
+    return res.json(successResponse({
+      message: 'NFT Collection created on OneChain',
+      transactionDigest: digest, sender: senderAddress,
+      collectionObjectId: collectionObj?.objectId,
+      collectionInfo: { name, symbol, baseUrl, totalSupply },
+      network: ACTIVE_NETWORK, nativeCurrency: NATIVE_TOKEN,
+      explorerUrl: getTxExplorerUrl(digest),
+      collectionExplorerUrl: collectionObj ? getObjectExplorerUrl(collectionObj.objectId) : null,
+      packageExplorerUrl: getPackageExplorerUrl(NFT_FACTORY_PACKAGE_ID),
+    }));
   } catch (error) {
-    console.error('Deploy NFT collection error:', error);
-    return res.status(500).json(
-      errorResponse(error.message, error.reason || error.code)
-    );
+    console.error('Create NFT collection error:', error);
+    return res.status(500).json(errorResponse(error.message));
   }
 }
 
-/**
- * Mint NFT from collection
- */
 async function mintNFT(req, res) {
   try {
-    const { privateKey, collectionAddress, toAddress } = req.body;
-
-    // Validate required fields
-    const validationError = validateRequiredFields(req.body, ['privateKey', 'collectionAddress', 'toAddress']);
-    if (validationError) {
-      return res.status(400).json(validationError);
-    }
-
-    const provider = getProvider();
-    const wallet = getWallet(privateKey, provider);
-
-    logTransaction('Mint NFT', { collectionAddress, toAddress });
-
-    // Connect to NFT contract
-    const nftContract = getContract(collectionAddress, ERC721_COLLECTION_ABI, wallet);
-
-    // Mint NFT
-    const tx = await nftContract.mint(toAddress);
-    console.log('Mint transaction sent:', tx.hash);
-
-    const receipt = await tx.wait();
-    console.log('Mint confirmed in block:', receipt.blockNumber);
-
-    // Parse Transfer event to get token ID
-    const nftInterface = new ethers.Interface(ERC721_COLLECTION_ABI);
-    const eventArgs = parseEventFromReceipt(receipt, nftInterface, 'Transfer');
-    
-    const tokenId = eventArgs ? eventArgs.token_id.toString() : 'unknown';
-
-    return res.json(
-      successResponse({
-        message: 'NFT minted successfully',
-        tokenId: tokenId,
-        collectionAddress: collectionAddress,
-        owner: toAddress,
-        transactionHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString(),
-        explorerUrl: getTxExplorerUrl(receipt.hash)
-      })
-    );
-
+    const { privateKey, factoryObjectId, collectionObjectId, name, description = '', imageUrl = '', recipient, attributes = [] } = req.body;
+    const validationError = validateRequiredFields(req.body, ['privateKey', 'factoryObjectId', 'collectionObjectId', 'name', 'recipient']);
+    if (validationError) return res.status(400).json(validationError);
+    const keypair = getKeypair(privateKey);
+    const senderAddress = keypair.toSuiAddress();
+    logTransaction('Mint NFT', { name, collectionObjectId, recipient });
+    const attrKeys = attributes.map(a => Array.from(Buffer.from(String(a.key ?? ''))));
+    const attrVals = attributes.map(a => Array.from(Buffer.from(String(a.value ?? ''))));
+    const tx = new Transaction();
+    const attrObjs = attributes.map((_, i) => tx.moveCall({
+      target: `${NFT_FACTORY_PACKAGE_ID}::factory::new_attribute`,
+      arguments: [tx.pure.vector('u8', attrKeys[i]), tx.pure.vector('u8', attrVals[i])],
+    }));
+    tx.moveCall({
+      target: `${NFT_FACTORY_PACKAGE_ID}::factory::mint_nft`,
+      arguments: [
+        tx.object(factoryObjectId), tx.object(collectionObjectId),
+        tx.pure.vector('u8', Array.from(Buffer.from(name))),
+        tx.pure.vector('u8', Array.from(Buffer.from(description))),
+        tx.pure.vector('u8', Array.from(Buffer.from(imageUrl))),
+        tx.makeMoveVec({ type: `${NFT_FACTORY_PACKAGE_ID}::factory::Attribute`, elements: attrObjs }),
+        tx.pure.address(recipient),
+      ],
+    });
+    const result = await executeTransaction(tx, keypair);
+    const digest = result.digest;
+    const created = result.objectChanges?.filter(c => c.type === 'created') ?? [];
+    const nftObj = created.find(o => o.objectType?.includes('::factory::Nft'));
+    return res.json(successResponse({
+      message: 'NFT minted successfully',
+      transactionDigest: digest, sender: senderAddress, recipient,
+      nftObjectId: nftObj?.objectId, collectionObjectId,
+      nftInfo: { name, description, imageUrl },
+      network: ACTIVE_NETWORK,
+      explorerUrl: getTxExplorerUrl(digest),
+      nftExplorerUrl: nftObj ? getObjectExplorerUrl(nftObj.objectId) : null,
+    }));
   } catch (error) {
     console.error('Mint NFT error:', error);
-    return res.status(500).json(
-      errorResponse(error.message, error.reason || error.code)
-    );
+    return res.status(500).json(errorResponse(error.message));
   }
 }
 
-/**
- * Get NFT information
- */
 async function getNFTInfo(req, res) {
   try {
-    const { collectionAddress, tokenId } = req.params;
-    const provider = getProvider();
-    const nftContract = getContract(collectionAddress, ERC721_COLLECTION_ABI, provider);
-    
-    const owner = await nftContract.owner_of(BigInt(tokenId));
-    const tokenURI = await nftContract.token_uri(BigInt(tokenId));
-    const name = await nftContract.name();
-    const symbol = await nftContract.symbol();
-    
-    return res.json(
-      successResponse({
-        collectionAddress: collectionAddress,
-        tokenId: tokenId,
-        owner: owner,
-        tokenURI: tokenURI,
-        collectionName: name,
-        collectionSymbol: symbol,
-        network: 'Arbitrum Sepolia'
-      })
-    );
+    const { objectId } = req.params;
+    const obj = await getObject(objectId);
+    if (!obj?.data) return res.status(404).json(errorResponse('NFT object not found'));
+    const fields = obj.data.content?.fields ?? {};
+    return res.json(successResponse({
+      objectId, objectType: obj.data.type,
+      name: fields.name, description: fields.description,
+      imageUrl: fields.image_url, creator: fields.creator,
+      tokenId: fields.token_id, collectionId: fields.collection_id,
+      attributes: fields.attributes, network: ACTIVE_NETWORK,
+      explorerUrl: getObjectExplorerUrl(objectId),
+    }));
   } catch (error) {
     return res.status(500).json(errorResponse(error.message));
   }
 }
 
-module.exports = {
-  deployNFTCollection,
-  mintNFT,
-  getNFTInfo
-};
+module.exports = { deployNFTCollection, mintNFT, getNFTInfo };

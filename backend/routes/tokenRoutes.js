@@ -6,10 +6,10 @@ const router = express.Router();
 // Token deployment
 router.post('/deploy', deployToken);
 
-// Token information
-router.get('/info/:tokenId', getTokenInfo);
+// Token object info by on-chain object ID
+router.get('/info/:objectId', getTokenInfo);
 
-// Token balance
-router.get('/balance/:tokenId/:ownerAddress', getTokenBalance);
+// OCT balance for an address
+router.get('/balance/:address', getTokenBalance);
 
 module.exports = router;

@@ -1,170 +1,120 @@
-const { ethers } = require('ethers');
-const { FACTORY_ADDRESS } = require('../config/constants');
-const { FACTORY_ABI, ERC20_TOKEN_ABI } = require('../config/abis');
-const { getProvider, getWallet, getContract, parseEventFromReceipt } = require('../utils/blockchain');
-const { 
-  successResponse, 
-  errorResponse, 
-  validateRequiredFields, 
-  getTxExplorerUrl, 
+const { Transaction } = require('@mysten/sui/transactions');
+const {
+  TOKEN_FACTORY_PACKAGE_ID,
+  ACTIVE_NETWORK,
+  NATIVE_TOKEN,
+} = require('../config/constants');
+const { getClient, getKeypair, getBalance, executeTransaction, getObject, getOwnedObjects } = require('../utils/blockchain');
+const {
+  successResponse,
+  errorResponse,
+  validateRequiredFields,
+  getTxExplorerUrl,
   getAddressExplorerUrl,
-  logTransaction 
+  getObjectExplorerUrl,
+  getPackageExplorerUrl,
+  mistToOct,
+  logTransaction,
 } = require('../utils/helpers');
 
 /**
- * Deploy ERC20 Token via Stylus TokenFactory
+ * Create a fungible Token via the OneChain token_factory Move package.
+ *
+ * The factory is a shared object stored on-chain.  The caller signs with
+ * their private key so the Token and MintCap land in their wallet.
  */
 async function deployToken(req, res) {
   try {
-    const { privateKey, name, symbol, initialSupply, decimals = 18 } = req.body;
+    const { privateKey, name, symbol, decimals = 9, initialSupply, factoryObjectId } = req.body;
 
-    // Validate required fields
     const validationError = validateRequiredFields(req.body, ['privateKey', 'name', 'symbol', 'initialSupply']);
-    if (validationError) {
-      return res.status(400).json(validationError);
-    }
+    if (validationError) return res.status(400).json(validationError);
 
-    // Check if factory is configured
-    if (FACTORY_ADDRESS === '0x0000000000000000000000000000000000000000') {
+    if (!TOKEN_FACTORY_PACKAGE_ID || TOKEN_FACTORY_PACKAGE_ID === '0x0') {
       return res.status(500).json(
-        errorResponse('TokenFactory contract address not configured. Please set TOKEN_FACTORY_ADDRESS in environment variables.')
+        errorResponse('TOKEN_FACTORY_PACKAGE_ID not configured. Deploy the Move package first.')
       );
     }
 
-    const provider = getProvider();
-    const wallet = getWallet(privateKey, provider);
+    const keypair = getKeypair(privateKey);
+    const senderAddress = keypair.toSuiAddress();
+    logTransaction('Create Token', { name, symbol, decimals, initialSupply, sender: senderAddress });
 
-    // Check balance for gas
-    const balance = await provider.getBalance(wallet.address);
-    logTransaction('Deploy Token', { name, symbol, decimals, initialSupply, balance: ethers.formatEther(balance) });
-    
-    if (balance === 0n) {
+    // Verify sender has enough OCT for gas
+    const balanceInfo = await getBalance(senderAddress);
+    if (BigInt(balanceInfo.totalBalance) === 0n) {
       return res.status(400).json(
-        errorResponse('Insufficient balance for gas fees', 'Please fund your wallet with ETH on Arbitrum Sepolia')
+        errorResponse('Insufficient OCT balance for gas fees', 'Get testnet OCT from https://faucet-testnet.onelabs.cc')
       );
     }
 
-    // Connect to factory
-    const factory = getContract(FACTORY_ADDRESS, FACTORY_ABI, wallet);
+    // Build PTB
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${TOKEN_FACTORY_PACKAGE_ID}::factory::create_token`,
+      arguments: [
+        tx.object(factoryObjectId),                      // &mut TokenFactory (shared)
+        tx.pure.vector('u8', Array.from(Buffer.from(name))),
+        tx.pure.vector('u8', Array.from(Buffer.from(symbol))),
+        tx.pure.u8(decimals),
+        tx.pure.u64(BigInt(initialSupply)),
+      ],
+    });
 
-    // Convert name and symbol to bytes32
-    const nameBytes32 = ethers.encodeBytes32String(name);
-    const symbolBytes32 = ethers.encodeBytes32String(symbol);
+    const result = await executeTransaction(tx, keypair);
+    const digest = result.digest;
 
-    // Convert values to BigInt
-    const decimalsBigInt = BigInt(decimals.toString());
-    const initialSupplyBigInt = BigInt(initialSupply.toString());
-
-    // Estimate gas
-    let gasEstimate;
-    let estimatedCost = null;
-    try {
-      gasEstimate = await factory.createToken.estimateGas(nameBytes32, symbolBytes32, decimalsBigInt, initialSupplyBigInt);
-      
-      const feeData = await provider.getFeeData();
-      if (feeData.gasPrice) {
-        const estimatedCostWei = gasEstimate * feeData.gasPrice;
-        estimatedCost = ethers.formatEther(estimatedCostWei);
-        
-        // Check if balance is sufficient
-        const gasBuffer = estimatedCostWei * 12n / 10n;
-        if (balance < gasBuffer) {
-          return res.status(400).json(
-            errorResponse('Insufficient balance for gas fees', {
-              balance: ethers.formatEther(balance),
-              estimatedCost: estimatedCost,
-              required: ethers.formatEther(gasBuffer)
-            })
-          );
-        }
-      }
-    } catch (estimateError) {
-      console.warn('Gas estimation failed:', estimateError.message);
-    }
-
-    // Create token
-    const tx = gasEstimate 
-      ? await factory.createToken(nameBytes32, symbolBytes32, decimalsBigInt, initialSupplyBigInt, { gasLimit: gasEstimate * 12n / 10n })
-      : await factory.createToken(nameBytes32, symbolBytes32, decimalsBigInt, initialSupplyBigInt);
-
-    console.log('Transaction sent:', tx.hash);
-
-    // Wait for confirmation
-    const receipt = await tx.wait();
-    console.log('Transaction confirmed in block:', receipt.blockNumber);
-
-    // The createToken function returns the token_id
-    // We need to decode it from the transaction result
-    const tokenId = receipt.logs && receipt.logs.length > 0 
-      ? await factory.getTokenCount() - 1n // Get the last created token ID
-      : 0n;
-    
-    console.log('Token created with ID:', tokenId.toString());
-
-    // Get token info using getTokenInfo
-    let tokenInfo = { name, symbol, decimals, totalSupply: initialSupply };
-    try {
-      const [nameBytes, symbolBytes, decimalsResult, totalSupply, creator] = await factory.getTokenInfo(tokenId);
-      tokenInfo = {
-        name: ethers.decodeBytes32String(nameBytes),
-        symbol: ethers.decodeBytes32String(symbolBytes),
-        decimals: Number(decimalsResult),
-        totalSupply: totalSupply.toString(),
-        creator: creator
-      };
-    } catch (error) {
-      console.warn('Could not fetch token info:', error.message);
-    }
+    // Pull new object IDs created by this transaction
+    const createdObjects = result.objectChanges?.filter(c => c.type === 'created') ?? [];
+    const tokenObj = createdObjects.find(o => o.objectType?.includes('::factory::Token'));
+    const mintCapObj = createdObjects.find(o => o.objectType?.includes('::factory::MintCap'));
 
     return res.json(
       successResponse({
-        message: 'Token deployed successfully via Stylus TokenFactory',
-        tokenId: tokenId.toString(),
-        factoryAddress: FACTORY_ADDRESS,
-        transactionHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString(),
-        estimatedCost: estimatedCost,
-        creator: wallet.address,
-        tokenInfo: tokenInfo,
-        explorerUrl: getAddressExplorerUrl(FACTORY_ADDRESS),
-        transactionUrl: getTxExplorerUrl(receipt.hash)
+        message: 'Token created successfully on OneChain',
+        transactionDigest: digest,
+        sender: senderAddress,
+        network: ACTIVE_NETWORK,
+        nativeCurrency: NATIVE_TOKEN,
+        tokenObjectId: tokenObj?.objectId,
+        mintCapObjectId: mintCapObj?.objectId,
+        tokenInfo: { name, symbol, decimals, initialSupply },
+        explorerUrl: getTxExplorerUrl(digest),
+        tokenExplorerUrl: tokenObj ? getObjectExplorerUrl(tokenObj.objectId) : null,
+        packageExplorerUrl: getPackageExplorerUrl(TOKEN_FACTORY_PACKAGE_ID),
       })
     );
-
   } catch (error) {
-    console.error('Deploy token error:', error);
-    return res.status(500).json(
-      errorResponse(error.message, error.reason || error.code)
-    );
+    console.error('Create token error:', error);
+    return res.status(500).json(errorResponse(error.message));
   }
 }
 
 /**
- * Get token information
+ * Get token object info by object ID.
  */
 async function getTokenInfo(req, res) {
   try {
-    const { tokenId } = req.params;
-    const provider = getProvider();
-    const factory = getContract(FACTORY_ADDRESS, FACTORY_ABI, provider);
-    
-    const [nameBytes, symbolBytes, decimals, totalSupply, creator] = await factory.getTokenInfo(BigInt(tokenId));
-    
-    const name = ethers.decodeBytes32String(nameBytes);
-    const symbol = ethers.decodeBytes32String(symbolBytes);
-    
+    const { objectId } = req.params;
+    const obj = await getObject(objectId);
+
+    if (!obj?.data) {
+      return res.status(404).json(errorResponse('Token object not found'));
+    }
+
+    const fields = obj.data.content?.fields ?? {};
+
     return res.json(
       successResponse({
-        tokenId: tokenId,
-        factoryAddress: FACTORY_ADDRESS,
-        name: name,
-        symbol: symbol,
-        decimals: Number(decimals),
-        totalSupply: ethers.formatUnits(totalSupply, Number(decimals)),
-        totalSupplyRaw: totalSupply.toString(),
-        creator: creator,
-        network: 'Arbitrum Sepolia'
+        objectId,
+        objectType: obj.data.type,
+        name: fields.name,
+        symbol: fields.symbol,
+        decimals: fields.decimals,
+        balance: fields.balance,
+        creator: fields.creator,
+        network: ACTIVE_NETWORK,
+        explorerUrl: getObjectExplorerUrl(objectId),
       })
     );
   } catch (error) {
@@ -173,35 +123,22 @@ async function getTokenInfo(req, res) {
 }
 
 /**
- * Get token balance
+ * Get OCT balance (native coin) for an address.
  */
 async function getTokenBalance(req, res) {
   try {
-    const { tokenId, ownerAddress } = req.params;
-    const provider = getProvider();
-    const factory = getContract(FACTORY_ADDRESS, ERC20_TOKEN_ABI, provider);
-    
-    const tokenIdBigInt = BigInt(tokenId);
-    const balance = await factory.balanceOf(tokenIdBigInt, ownerAddress);
-    
-    // Get decimals from token info
-    let decimals = 18;
-    try {
-      const [, , decimalsResult] = await factory.getTokenInfo(tokenIdBigInt);
-      decimals = Number(decimalsResult);
-    } catch (e) {
-      console.log('Could not get decimals, using 18');
-    }
-    
+    const { address } = req.params;
+    const balanceInfo = await getBalance(address);
+
     return res.json(
       successResponse({
-        tokenId: tokenId,
-        factoryAddress: FACTORY_ADDRESS,
-        ownerAddress: ownerAddress,
-        balance: ethers.formatUnits(balance, decimals),
-        balanceRaw: balance.toString(),
-        decimals: decimals,
-        network: 'Arbitrum Sepolia'
+        address,
+        balance: balanceInfo.inOCT,
+        balanceMist: balanceInfo.totalBalance,
+        formatted: balanceInfo.formatted,
+        currency: NATIVE_TOKEN,
+        network: ACTIVE_NETWORK,
+        explorerUrl: getAddressExplorerUrl(address),
       })
     );
   } catch (error) {
@@ -212,5 +149,5 @@ async function getTokenBalance(req, res) {
 module.exports = {
   deployToken,
   getTokenInfo,
-  getTokenBalance
+  getTokenBalance,
 };

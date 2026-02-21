@@ -1,0 +1,9 @@
+[package]
+name = "payment_escrow"
+edition = "2024.beta"
+
+[dependencies]
+One = { git = "https://github.com/one-chain-labs/onechain.git", subdir = "crates/sui-framework/packages/one-framework", rev = "main" }
+
+[addresses]
+payment_escrow = "0x0"

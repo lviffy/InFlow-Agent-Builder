@@ -1,5 +1,6 @@
 const express = require('express');
-const { NETWORK_NAME, ARBITRUM_SEPOLIA_RPC, FACTORY_ADDRESS, NFT_FACTORY_ADDRESS } = require('../config/constants');
+const { NETWORK_NAME, ONECHAIN_TESTNET_RPC, ACTIVE_NETWORK, TOKEN_FACTORY_PACKAGE_ID, NFT_FACTORY_PACKAGE_ID } = require('../config/constants');
+const { getRpcUrl } = require('../utils/blockchain');
 
 const router = express.Router();
 
@@ -7,10 +8,13 @@ const router = express.Router();
 router.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
+    chain: 'OneChain',
     network: NETWORK_NAME,
-    rpc: ARBITRUM_SEPOLIA_RPC,
-    tokenFactory: FACTORY_ADDRESS,
-    nftFactory: NFT_FACTORY_ADDRESS,
+    activeNetwork: ACTIVE_NETWORK,
+    rpc: getRpcUrl(),
+    tokenFactoryPackage: TOKEN_FACTORY_PACKAGE_ID || 'not configured',
+    nftFactoryPackage: NFT_FACTORY_PACKAGE_ID || 'not configured',
+    nativeCurrency: 'OCT',
     timestamp: new Date().toISOString()
   });
 });
