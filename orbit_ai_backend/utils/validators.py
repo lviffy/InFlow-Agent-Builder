@@ -1,142 +1,140 @@
 """
-Input validators for Ethereum addresses, chain IDs, etc.
+Input validators for OneChain addresses, Move package names, and NLP helpers.
 """
 import re
+import random
 from typing import Optional
 
 
-def is_valid_eth_address(address: str) -> bool:
-    """Validate Ethereum address format."""
+# ---------------------------------------------------------------------------
+# OneChain address validation
+# ---------------------------------------------------------------------------
+
+def is_valid_onechain_address(address: str) -> bool:
+    """Validate a OneChain (Sui-style) address: 0x + 40-64 hex chars."""
     if not address:
         return False
-    return bool(re.match(r"^0x[a-fA-F0-9]{40}$", address))
+    return bool(re.match(r"^0x[a-fA-F0-9]{40,64}$", address))
 
 
-def normalize_eth_address(address: str) -> str:
-    """Normalize Ethereum address to lowercase with 0x prefix."""
+def normalize_onechain_address(address: str) -> str:
+    """Normalize address to lowercase with 0x prefix."""
     if not address:
         raise ValueError("Address cannot be empty")
-    
-    # Add 0x prefix if missing
     if not address.startswith("0x"):
         address = "0x" + address
-    
-    if not is_valid_eth_address(address):
-        raise ValueError(f"Invalid Ethereum address: {address}")
-    
+    if not is_valid_onechain_address(address):
+        raise ValueError(f"Invalid OneChain address: {address}")
     return address.lower()
 
 
-def is_valid_chain_id(chain_id: int) -> bool:
-    """Validate L3 chain ID is in acceptable range."""
-    # L3 chains should use IDs in 412000-999999 range
-    return 412000 <= chain_id <= 999999
+# Backward-compat aliases used by conversation.py
+is_valid_eth_address = is_valid_onechain_address
+normalize_eth_address = normalize_onechain_address
 
 
-def generate_chain_id() -> int:
-    """Generate a random unique chain ID for L3."""
-    import random
-    return random.randint(412000, 499999)
+# ---------------------------------------------------------------------------
+# Package name helpers
+# ---------------------------------------------------------------------------
 
-
-def validate_validators_count(count: int) -> bool:
-    """Validate number of validators is reasonable."""
-    return 1 <= count <= 20
-
-
-def parse_validator_count_from_text(text: str) -> Optional[int]:
-    """Extract validator count from natural language."""
-    text = text.lower()
-    
-    # Direct numbers
-    numbers = re.findall(r"\b(\d+)\b", text)
-    if numbers:
-        count = int(numbers[0])
-        if validate_validators_count(count):
-            return count
-    
-    # Word numbers
-    word_to_num = {
-        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-    }
-    for word, num in word_to_num.items():
-        if word in text:
-            return num
-    
-    return None
-
-
-def parse_block_time_from_text(text: str) -> Optional[int]:
-    """Extract block time from natural language (in seconds)."""
-    text = text.lower()
-    
-    # Look for patterns like "1s", "1 second", "1 sec"
+def extract_package_name_from_text(text: str) -> Optional[str]:
+    """Try to extract a Move package name from user input."""
     patterns = [
-        r"(\d+)\s*s(?:ec(?:ond)?s?)?",
-        r"(\d+)\s*second",
+        r"(?:called|named|name\s+is|name:)\s+[\"\']?([a-zA-Z0-9_\s]+)[\"\']?",
+        r"^([a-zA-Z][a-zA-Z0-9_]+)$",
     ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, text)
-        if match:
-            time = int(match.group(1))
-            if 1 <= time <= 30:
-                return time
-    
-    # Keywords
-    if "fast" in text or "quick" in text:
-        return 1
-    if "slow" in text:
-        return 3
-    
-    return None
-
-
-def parse_use_case_from_text(text: str) -> Optional[str]:
-    """Detect use case from natural language description."""
-    text = text.lower()
-    
-    use_cases = {
-        "gaming": ["gaming", "game", "player", "esports", "nft game", "play to earn", "p2e"],
-        "defi": ["defi", "finance", "trading", "exchange", "lending", "yield", "swap", "dex"],
-        "enterprise": ["enterprise", "private", "business", "corporate", "internal"],
-        "nft": ["nft", "collectible", "art", "marketplace", "token"],
-        "general": ["general", "basic", "simple"],
-    }
-    
-    for use_case, keywords in use_cases.items():
-        for keyword in keywords:
-            if keyword in text:
-                return use_case
-    
-    return None
-
-
-def extract_chain_name_from_text(text: str) -> Optional[str]:
-    """Try to extract a chain name from user input."""
-    # Pattern: "called X", "named X", "name is X", "name: X"
-    patterns = [
-        r"(?:called|named|name\s+is|name:)\s+[\"']?([a-zA-Z0-9\s]+)[\"']?",
-        r"^([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*)",  # Title case words at start
-        r"^([a-zA-Z][a-zA-Z0-9]+)$",  # Single word name (any case)
-    ]
-    
     for pattern in patterns:
         match = re.search(pattern, text.strip(), re.IGNORECASE)
         if match:
-            name = match.group(1).strip()
-            if len(name) >= 2 and len(name) <= 50:
-                return name
-    
+            raw = match.group(1).strip()
+            if 2 <= len(raw) <= 50:
+                clean = re.sub(r"[\s-]+", "_", raw).lower()
+                clean = re.sub(r"[^a-z0-9_]", "", clean).strip("_")
+                if clean:
+                    return clean
     return None
 
+
+# Alias used by conversation.py
+extract_chain_name_from_text = extract_package_name_from_text
+
+
+# ---------------------------------------------------------------------------
+# Use-case / network / gas parsing
+# ---------------------------------------------------------------------------
+
+def parse_use_case_from_text(text: str) -> Optional[str]:
+    """Detect a Move package use-case from natural language."""
+    text = text.lower()
+    use_cases = {
+        "token": ["token", "coin", "currency", "fungible", "erc20"],
+        "nft": ["nft", "collectible", "art", "collection", "non-fungible"],
+        "defi": ["defi", "finance", "trading", "swap", "dex", "lending", "yield", "vault"],
+        "game": ["game", "gaming", "play", "esport", "p2e", "play to earn"],
+        "general": ["general", "basic", "simple", "misc"],
+    }
+    for use_case, keywords in use_cases.items():
+        for kw in keywords:
+            if kw in text:
+                return use_case
+    return None
+
+
+def parse_network_from_text(text: str) -> Optional[str]:
+    """Detect which OneChain network the user wants."""
+    text = text.lower()
+    if "mainnet" in text or "production" in text:
+        return "mainnet"
+    if "devnet" in text:
+        return "devnet"
+    if "test" in text:
+        return "testnet"
+    return None
+
+
+def parse_gas_budget_from_text(text: str) -> Optional[int]:
+    """Extract gas budget in MIST from natural language."""
+    text_lower = text.lower()
+    oct_match = re.search(r"(\d+(?:\.\d+)?)\s*oct", text_lower)
+    if oct_match:
+        return int(float(oct_match.group(1)) * 1_000_000_000)
+    mist_match = re.search(r"(\d[\d_,]*)\s*mist", text_lower)
+    if mist_match:
+        raw = mist_match.group(1).replace(",", "").replace("_", "")
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    if any(w in text_lower for w in ["default", "standard", "yes", "sure", "ok"]):
+        return 50_000_000
+    if any(w in text_lower for w in ["small", "low"]):
+        return 30_000_000
+    if any(w in text_lower for w in ["large", "big", "complex"]):
+        return 150_000_000
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Misc
+# ---------------------------------------------------------------------------
 
 def extract_wallet_intent(text: str) -> bool:
     """Check if user wants to use their connected wallet."""
     text = text.lower()
-    wallet_phrases = [
-        "my wallet", "connected wallet", "use my", "my address",
-        "current wallet", "this wallet", "same wallet",
-    ]
-    return any(phrase in text for phrase in wallet_phrases)
+    phrases = ["my wallet", "connected wallet", "use my", "my address",
+               "current wallet", "this wallet", "same wallet"]
+    return any(phrase in text for phrase in phrases)
+
+
+def generate_chain_id() -> int:
+    """Kept for backward compat."""
+    return random.randint(412000, 499999)
+
+
+# Stubs kept for backward compat
+def parse_validator_count_from_text(text: str) -> Optional[int]:
+    return None
+
+
+def parse_block_time_from_text(text: str) -> Optional[int]:
+    return None

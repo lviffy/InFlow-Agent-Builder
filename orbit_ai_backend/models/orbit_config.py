@@ -1,5 +1,5 @@
 """
-Pydantic models for Orbit L3 chain configuration.
+Pydantic models for OneChain Move package configuration.
 """
 from enum import Enum
 from typing import Optional
@@ -7,132 +7,94 @@ from pydantic import BaseModel, Field, field_validator
 import re
 
 
-class DataAvailabilityMode(str, Enum):
-    """Data availability modes for Orbit chains."""
-    ANYTRUST = "anytrust"
-    ROLLUP = "rollup"
+class NetworkType(str, Enum):
+    """Supported OneChain networks."""
+    TESTNET = "testnet"
+    MAINNET = "mainnet"
+    DEVNET = "devnet"
 
 
-class ParentChain(str, Enum):
-    """Supported parent chains."""
-    ARBITRUM_SEPOLIA = "arbitrum-sepolia"
-    ARBITRUM_ONE = "arbitrum-one"
-    ARBITRUM_NOVA = "arbitrum-nova"
+class PackageType(str, Enum):
+    """Type of Move package to deploy."""
+    TOKEN = "token"
+    NFT = "nft"
+    DEFI = "defi"
+    GAME = "game"
+    GENERAL = "general"
 
 
-class NativeToken(BaseModel):
-    """Native token configuration."""
-    name: str = "Ether"
-    symbol: str = "ETH"
-    decimals: int = 18
+class TokenConfig(BaseModel):
+    """Token-specific configuration within a Move package."""
+    name: str = "MyToken"
+    symbol: str = "MTK"
+    decimals: int = 9
+    initial_supply: int = 1_000_000_000  # in base units
 
 
-class ChainConfig(BaseModel):
-    """Detailed chain configuration."""
-    chain_name: str
-    native_token: NativeToken = Field(default_factory=NativeToken)
-    sequencer_url: Optional[str] = None
-    block_time: int = 2  # seconds
-    gas_limit: int = 30_000_000
-    challenge_period_days: int = 7
+class PackageConfig(BaseModel):
+    """Complete Move package deployment configuration."""
+    package_name: str = Field(..., description="Move package name (underscore-friendly)")
+    network: NetworkType = NetworkType.TESTNET
+    owner_address: str = Field(..., description="Deployer / owner wallet address on OneChain")
+    package_type: PackageType = PackageType.GENERAL
+    use_case: Optional[str] = None
+    gas_budget: int = Field(default=50_000_000, description="Gas budget in MIST")
+    token_config: Optional[TokenConfig] = None
 
-
-class OrbitConfig(BaseModel):
-    """Complete Orbit L3 chain configuration."""
-    # Required
-    name: str = Field(..., description="URL-friendly chain name")
-    chain_id: int = Field(..., ge=412000, le=999999, description="Unique chain ID")
-    parent_chain: ParentChain = ParentChain.ARBITRUM_SEPOLIA
-    owner_address: str = Field(..., description="Chain owner wallet address")
-    
-    # Validators
-    validators: list[str] = Field(default_factory=list, min_length=1)
-    
-    # Data availability
-    data_availability: DataAvailabilityMode = DataAvailabilityMode.ANYTRUST
-    
-    # Chain config
-    chain_config: ChainConfig
-    
-    # Auto-generated
-    sequencer_address: Optional[str] = None
-    batch_poster_address: Optional[str] = None
-    
-    # Metadata
-    use_case: Optional[str] = None  # gaming, defi, enterprise, nft, general
-    
-    @field_validator("owner_address", "sequencer_address", "batch_poster_address")
+    @field_validator("owner_address")
     @classmethod
-    def validate_address(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if not re.match(r"^0x[a-fA-F0-9]{40}$", v):
-            raise ValueError("Invalid Ethereum address format")
+    def validate_address(cls, v: str) -> str:
+        if not v:
+            raise ValueError("Owner address cannot be empty")
+        if not re.match(r"^0x[a-fA-F0-9]{40,64}$", v):
+            raise ValueError("Invalid OneChain address format (expected 0x + 40-64 hex chars)")
         return v.lower()
-    
-    @field_validator("validators")
-    @classmethod
-    def validate_validators(cls, v: list[str]) -> list[str]:
-        validated = []
-        for addr in v:
-            if not re.match(r"^0x[a-fA-F0-9]{40}$", addr):
-                raise ValueError(f"Invalid validator address: {addr}")
-            validated.append(addr.lower())
-        return validated
-    
-    @field_validator("name")
+
+    @field_validator("package_name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        # Make URL-friendly: lowercase, replace spaces with hyphens
-        clean = re.sub(r"[^a-zA-Z0-9\s-]", "", v)
-        clean = re.sub(r"\s+", "-", clean).lower().strip("-")
+        clean = re.sub(r"[^a-zA-Z0-9\s_]", "", v)
+        clean = re.sub(r"[\s]+", "_", clean).lower().strip("_")
         if not clean:
-            raise ValueError("Chain name must contain alphanumeric characters")
+            raise ValueError("Package name must contain alphanumeric characters")
         return clean
-    
+
     def to_backend_format(self) -> dict:
-        """Convert to format expected by Node.js backend."""
-        # Use owner_address as sequencer if not set separately
-        sequencer = self.sequencer_address or self.owner_address
-        
-        return {
-            "name": self.chain_config.chain_name,
-            "chainId": self.chain_id,
-            "parentChain": self.parent_chain.value,
-            "description": f"L3 chain for {self.use_case or 'general'} use case",
-            # Required by backend deploy endpoint
+        """Convert to format expected by the Node.js backend."""
+        result: dict = {
+            "packageName": self.package_name,
+            "network": self.network.value,
             "ownerAddress": self.owner_address,
-            "sequencerAddress": sequencer,
-            "batchPosterAddress": self.batch_poster_address or sequencer,
-            "validators": self.validators,
-            "dataAvailability": self.data_availability.value,
-            "challengePeriod": self.chain_config.challenge_period_days * 86400,  # days to seconds
-            # Gas config
-            "l2GasPrice": "0.1",
-            "l1GasPrice": "10",
-            # Chain config details
-            "nativeToken": {
-                "name": self.chain_config.native_token.name,
-                "symbol": self.chain_config.native_token.symbol,
-                "decimals": self.chain_config.native_token.decimals,
-            },
-            "blockTime": self.chain_config.block_time,
-            "gasLimit": self.chain_config.gas_limit,
+            "packageType": self.package_type.value,
+            "gasBudget": self.gas_budget,
+            "useCase": self.use_case or self.package_type.value,
         }
+        if self.token_config:
+            result["tokenConfig"] = {
+                "name": self.token_config.name,
+                "symbol": self.token_config.symbol,
+                "decimals": self.token_config.decimals,
+                "initialSupply": self.token_config.initial_supply,
+            }
+        return result
 
 
-class PartialOrbitConfig(BaseModel):
-    """Partial config during collection (all fields optional)."""
-    name: Optional[str] = None
-    chain_id: Optional[int] = None
-    parent_chain: Optional[str] = None
+class PartialPackageConfig(BaseModel):
+    """Partial config during conversation collection (all fields optional)."""
+    package_name: Optional[str] = None
+    network: Optional[str] = None
     owner_address: Optional[str] = None
-    validators: Optional[list[str]] = None
-    data_availability: Optional[str] = None
-    chain_name: Optional[str] = None
-    native_token_name: Optional[str] = None
-    native_token_symbol: Optional[str] = None
-    block_time: Optional[int] = None
-    gas_limit: Optional[int] = None
-    challenge_period_days: Optional[int] = None
+    package_type: Optional[str] = None
     use_case: Optional[str] = None
+    gas_budget: Optional[int] = None
+    token_name: Optional[str] = None
+    token_symbol: Optional[str] = None
+    token_decimals: Optional[int] = None
+    token_initial_supply: Optional[int] = None
+
+
+# ---------------------------------------------------------------------------
+# Backward-compat aliases
+# ---------------------------------------------------------------------------
+OrbitConfig = PackageConfig
+PartialOrbitConfig = PartialPackageConfig

@@ -12,7 +12,7 @@ class ChatRequest(BaseModel):
     session_id: str = Field(..., description="Conversation session ID (UUID)")
     message: str = Field(..., min_length=1, description="User message")
     wallet_address: Optional[str] = Field(None, description="Connected wallet address")
-    user_id: Optional[str] = Field(None, description="Privy user ID")
+    user_id: Optional[str] = Field(None, description="User identifier (wallet address)")
 
 
 class ChatResponse(BaseModel):
@@ -79,5 +79,5 @@ class PresetsListResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Health check response."""
     status: str = "healthy"
-    version: str = "1.0.0"
+    version: str = "2.0.0"
     service: str = "orbit-ai-backend"

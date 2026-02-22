@@ -86,13 +86,13 @@ class AIEngine:
         step_question = get_step_question(current_step, collected_params)
         
         # Build explicit context about current values
-        chain_name = collected_params.get("chain_name", "the chain")
+        package_name = collected_params.get("package_name", "the package")
         context_parts = [
             f"Context: You should be asking about '{current_step}'.",
-            f"The user's chain is named: {chain_name}" if chain_name != "the chain" else "",
+            f"The user's Move package is named: {package_name}" if package_name != "the package" else "",
             f"Collected so far: {collected_params}",
             f"Default question hint: {step_question}",
-            "CRITICAL: Use the actual chain name and values above, NEVER use example names like 'GameVerse'.",
+            "CRITICAL: Use the actual package name and values above, NEVER use example names.",
         ]
         messages.append({
             "role": "system",

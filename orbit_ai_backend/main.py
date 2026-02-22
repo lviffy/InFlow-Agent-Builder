@@ -44,15 +44,15 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:3000")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown."""
-    logger.info("Starting Orbit AI Backend...")
+    logger.info("Starting Orbit AI Backend (OneChain Move Package Deployer)...")
     yield
     logger.info("Shutting down Orbit AI Backend...")
 
 
 app = FastAPI(
     title="Orbit AI Backend",
-    description="Conversational AI for Arbitrum Orbit L3 chain deployment",
-    version="1.0.0",
+    description="Conversational AI for OneChain Move package deployment",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -209,14 +209,14 @@ async def deploy(request: DeployRequest):
     
     try:
         async with httpx.AsyncClient() as client:
-            # First, save the config to the backend
+            # Save the package config
             save_response = await client.post(
                 f"{BACKEND_URL}/api/orbit/config",
                 json=session.config,
                 timeout=30.0,
             )
             
-            if save_response.status_code != 201:
+            if save_response.status_code not in (200, 201):
                 raise HTTPException(
                     status_code=save_response.status_code,
                     detail=f"Failed to save config: {save_response.text}",
@@ -225,7 +225,7 @@ async def deploy(request: DeployRequest):
             save_data = save_response.json()
             config_id = save_data.get("configId")
             
-            # Then trigger deployment
+            # Trigger Move package deployment
             deploy_response = await client.post(
                 f"{BACKEND_URL}/api/orbit/deploy",
                 json={"configId": config_id},
@@ -248,7 +248,7 @@ async def deploy(request: DeployRequest):
             return DeployResponse(
                 deployment_id=deployment_id,
                 status="started",
-                message=f"Deployment initiated for {session.config.get('chainConfig', {}).get('chainName', 'your chain')}",
+                message=f"Deployment initiated for Move package '{session.config.get('packageName', 'your package')}' on {session.config.get('network', 'testnet')}",
             )
     
     except httpx.HTTPError as e:

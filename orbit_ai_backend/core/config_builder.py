@@ -1,159 +1,116 @@
 """
-Config builder: transforms collected params into complete OrbitConfig.
+Config builder: transforms collected conversation params into a complete PackageConfig.
 """
 import logging
 from typing import Optional
 
-from models.orbit_config import (
-    OrbitConfig,
-    ChainConfig,
-    NativeToken,
-    DataAvailabilityMode,
-    ParentChain,
-)
+from models.orbit_config import PackageConfig, PackageType, NetworkType, TokenConfig
 from models.conversation import ConversationSession
-from utils.validators import generate_chain_id
-from utils.defaults import (
-    generate_validators,
-    generate_sequencer_url,
-    get_preset,
-    DEFAULT_NATIVE_TOKEN,
-)
+from utils.defaults import get_preset, DEFAULT_GAS_BUDGET
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigBuilder:
-    """Builds complete OrbitConfig from collected conversation parameters."""
-    
-    def build_from_session(self, session: ConversationSession) -> Optional[OrbitConfig]:
-        """Build a complete config from session's collected params."""
+    """Builds complete PackageConfig from collected conversation parameters."""
+
+    def build_from_session(self, session: ConversationSession) -> Optional[PackageConfig]:
+        """Build a complete PackageConfig from session collected_params."""
         params = session.collected_params
-        
         if not params:
             return None
-        
-        # Get use case preset for defaults
+
         use_case = params.get("use_case", "general")
         preset = get_preset(use_case)
         defaults = preset.get("defaults", {})
-        
-        # Extract values with defaults
-        chain_name = params.get("chain_name", f"orbit-chain-{generate_chain_id()}")
-        
-        # Parent chain
-        parent_chain_str = params.get("parent_chain", "arbitrum-sepolia")
+
+        # Package name
+        package_name = params.get("package_name")
+        if not package_name:
+            package_name = f"my_{use_case}_package"
+
+        # Network
+        network_str = params.get("network", defaults.get("network", "testnet"))
         try:
-            parent_chain = ParentChain(parent_chain_str)
+            network = NetworkType(network_str)
         except ValueError:
-            parent_chain = ParentChain.ARBITRUM_SEPOLIA
-        
-        # Data availability
-        da_str = params.get("data_availability", defaults.get("data_availability", "anytrust"))
+            network = NetworkType.TESTNET
+
+        # Package type
+        pt_str = params.get("package_type", defaults.get("package_type", use_case))
         try:
-            data_availability = DataAvailabilityMode(da_str)
+            package_type = PackageType(pt_str)
         except ValueError:
-            data_availability = DataAvailabilityMode.ANYTRUST
-        
-        # Validators
-        validator_count = params.get("validators", defaults.get("validators", 3))
-        if isinstance(validator_count, int):
-            validators = generate_validators(validator_count)
-        elif isinstance(validator_count, list):
-            validators = validator_count
-        else:
-            validators = generate_validators(3)
-        
+            package_type = PackageType.GENERAL
+
         # Owner address
         owner = params.get("owner_address")
         if not owner:
-            owner = session.wallet_address or "0x0000000000000000000000000000000000000000"
-        
-        # Native token
-        native_token_data = params.get("native_token", DEFAULT_NATIVE_TOKEN)
-        if isinstance(native_token_data, dict):
-            native_token = NativeToken(**native_token_data)
-        else:
-            native_token = NativeToken()
-        
-        # Block time and gas limit
-        block_time = params.get("block_time", defaults.get("block_time", 2))
-        gas_limit = params.get("gas_limit", defaults.get("gas_limit", 30_000_000))
-        challenge_period = params.get("challenge_period", defaults.get("challenge_period_days", 7))
-        
-        # Build chain config
-        chain_config = ChainConfig(
-            chain_name=chain_name.replace("-", " ").title(),  # Human readable name
-            native_token=native_token,
-            sequencer_url=generate_sequencer_url(chain_name),
-            block_time=block_time,
-            gas_limit=gas_limit,
-            challenge_period_days=challenge_period,
-        )
-        
-        # Generate chain ID
-        chain_id = generate_chain_id()
-        
-        # Build complete config
+            owner = session.wallet_address or "0x" + "0" * 64
+
+        # Gas budget
+        gas_budget = params.get("gas_budget", defaults.get("gas_budget", DEFAULT_GAS_BUDGET))
+
+        # Token config (if it is a token package and user provided token details)
+        token_config = None
+        if package_type == PackageType.TOKEN:
+            token_name = params.get("token_name", "MyToken")
+            token_symbol = params.get("token_symbol", "MTK")
+            token_decimals = params.get("token_decimals", defaults.get("token_decimals", 9))
+            token_supply = params.get("token_initial_supply", defaults.get("token_initial_supply", 1_000_000_000))
+            token_config = TokenConfig(
+                name=token_name,
+                symbol=token_symbol,
+                decimals=token_decimals,
+                initial_supply=token_supply,
+            )
+
         try:
-            config = OrbitConfig(
-                name=chain_name.lower().replace(" ", "-"),
-                chain_id=chain_id,
-                parent_chain=parent_chain,
+            config = PackageConfig(
+                package_name=package_name,
+                network=network,
                 owner_address=owner,
-                validators=validators,
-                data_availability=data_availability,
-                chain_config=chain_config,
+                package_type=package_type,
                 use_case=use_case,
+                gas_budget=gas_budget,
+                token_config=token_config,
             )
             return config
         except Exception as e:
-            logger.error(f"Failed to build config: {e}")
+            logger.error("Failed to build PackageConfig: %s", e)
             return None
-    
-    def format_config_summary(self, config: OrbitConfig) -> str:
-        """Format config as a summary string for display."""
+
+    def format_config_summary(self, config: PackageConfig) -> str:
+        """Format config as a human-readable summary string."""
+        gas_oct = config.gas_budget / 1_000_000_000
+        token_line = ""
+        if config.token_config:
+            tc = config.token_config
+            token_line = f"\n  Token:         {tc.name} ({tc.symbol}), {tc.decimals} decimals"
+        owner_short = f"{config.owner_address[:10]}...{config.owner_address[-6:]}"
         lines = [
-            f"┌─────────────────────────────────────────┐",
-            f"│  {config.chain_config.chain_name} L3 Chain",
-            f"├─────────────────────────────────────────┤",
-            f"│  Chain ID:        {config.chain_id:,}",
-            f"│  Parent Chain:    {config.parent_chain.value.replace('-', ' ').title()}",
-            f"│  DA Mode:         {config.data_availability.value.title()}",
-            f"│  Block Time:      {config.chain_config.block_time} second(s)",
-            f"│  Gas Limit:       {config.chain_config.gas_limit:,}",
-            f"│  Validators:      {len(config.validators)}",
-            f"│  Native Token:    {config.chain_config.native_token.symbol}",
-            f"│  Challenge Period: {config.chain_config.challenge_period_days} days",
-            f"│  Owner:           {config.owner_address[:10]}...{config.owner_address[-6:]}",
-            f"└─────────────────────────────────────────┘",
+            "Move Package Configuration",
+            "------------------------",
+            f"  Package Name:  {config.package_name}",
+            f"  Package Type:  {config.package_type.value}",
+            f"  Network:       {config.network.value}",
+            f"  Gas Budget:    {config.gas_budget:,} MIST ({gas_oct:.3f} OCT)",
+            f"  Owner:         {owner_short}" + token_line,
         ]
         return "\n".join(lines)
-    
-    def validate_config(self, config: OrbitConfig) -> tuple[bool, list[str]]:
+
+    def validate_config(self, config: PackageConfig) -> tuple:
         """Validate a config and return (is_valid, errors)."""
         errors = []
-        
-        # Check required fields
-        if not config.name:
-            errors.append("Chain name is required")
-        
-        if not config.owner_address or config.owner_address == "0x0000000000000000000000000000000000000000":
+        if not config.package_name:
+            errors.append("Package name is required")
+        if not config.owner_address or len(config.owner_address) < 10:
             errors.append("Valid owner address is required")
-        
-        if not config.validators or len(config.validators) < 1:
-            errors.append("At least 1 validator is required")
-        
-        if config.chain_config.block_time < 1 or config.chain_config.block_time > 30:
-            errors.append("Block time must be between 1-30 seconds")
-        
-        if config.chain_config.gas_limit < 1_000_000:
-            errors.append("Gas limit too low")
-        
+        if config.gas_budget < 1_000_000:
+            errors.append("Gas budget too low (minimum 1,000,000 MIST)")
         return (len(errors) == 0, errors)
 
 
-# Singleton instance
 _config_builder: Optional[ConfigBuilder] = None
 
 

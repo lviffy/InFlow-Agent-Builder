@@ -1,74 +1,68 @@
 """
-Smart defaults and use-case presets for Orbit configuration.
+Smart defaults and use-case presets for OneChain Move package deployment.
 """
 from typing import Any
 
+# Default gas budget in MIST (1 OCT = 1_000_000_000 MIST)
+DEFAULT_GAS_BUDGET = 50_000_000  # 0.05 OCT
 
-# Use-case presets with recommended defaults
+# Use-case presets with recommended defaults for Move packages
 USE_CASE_PRESETS = {
-    "gaming": {
-        "id": "gaming",
-        "name": "Gaming",
-        "description": "Optimized for fast transactions and low latency gaming",
-        "icon": "🎮",
+    "token": {
+        "id": "token",
+        "name": "Fungible Token",
+        "description": "Deploy a fungible token (coin) on OneChain",
+        "icon": "coin",
         "defaults": {
-            "data_availability": "anytrust",
-            "block_time": 1,
-            "gas_limit": 50_000_000,
-            "validators": 3,
-            "challenge_period_days": 7,
-        },
-    },
-    "defi": {
-        "id": "defi",
-        "name": "DeFi",
-        "description": "Maximum security for financial applications",
-        "icon": "💰",
-        "defaults": {
-            "data_availability": "rollup",
-            "block_time": 2,
-            "gas_limit": 30_000_000,
-            "validators": 5,
-            "challenge_period_days": 7,
-        },
-    },
-    "enterprise": {
-        "id": "enterprise",
-        "name": "Enterprise",
-        "description": "Private chain for business applications",
-        "icon": "🏢",
-        "defaults": {
-            "data_availability": "anytrust",
-            "block_time": 3,
-            "gas_limit": 30_000_000,
-            "validators": 5,
-            "challenge_period_days": 14,
+            "package_type": "token",
+            "network": "testnet",
+            "gas_budget": 50_000_000,
+            "token_decimals": 9,
+            "token_initial_supply": 1_000_000_000,
         },
     },
     "nft": {
         "id": "nft",
-        "name": "NFT Platform",
-        "description": "Optimized for NFT minting and trading",
-        "icon": "🖼️",
+        "name": "NFT Collection",
+        "description": "Deploy an NFT collection with mint and transfer logic",
+        "icon": "nft",
         "defaults": {
-            "data_availability": "anytrust",
-            "block_time": 2,
-            "gas_limit": 40_000_000,
-            "validators": 3,
-            "challenge_period_days": 7,
+            "package_type": "nft",
+            "network": "testnet",
+            "gas_budget": 80_000_000,
+        },
+    },
+    "defi": {
+        "id": "defi",
+        "name": "DeFi Protocol",
+        "description": "Deploy a DeFi smart contract (vault, lending, DEX)",
+        "icon": "defi",
+        "defaults": {
+            "package_type": "defi",
+            "network": "testnet",
+            "gas_budget": 150_000_000,
+        },
+    },
+    "game": {
+        "id": "game",
+        "name": "Game Contract",
+        "description": "Deploy on-chain game logic (items, scores, rewards)",
+        "icon": "game",
+        "defaults": {
+            "package_type": "game",
+            "network": "testnet",
+            "gas_budget": 100_000_000,
         },
     },
     "general": {
         "id": "general",
         "name": "General Purpose",
-        "description": "Balanced configuration for mixed use cases",
-        "icon": "⚡",
+        "description": "Balanced configuration for any Move package",
+        "icon": "general",
         "defaults": {
-            "data_availability": "anytrust",
-            "block_time": 2,
-            "gas_limit": 30_000_000,
-            "validators": 3,
-            "challenge_period_days": 7,
+            "package_type": "general",
+            "network": "testnet",
+            "gas_budget": 50_000_000,
         },
     },
 }
@@ -76,10 +70,22 @@ USE_CASE_PRESETS = {
 
 def get_preset(use_case: str) -> dict:
     """Get preset configuration for a use case."""
-    return USE_CASE_PRESETS.get(use_case.lower(), USE_CASE_PRESETS["general"])
+    use_case_lower = use_case.lower()
+    if use_case_lower in USE_CASE_PRESETS:
+        return USE_CASE_PRESETS[use_case_lower]
+    keywords = {
+        "token": ["coin", "currency", "fungible"],
+        "nft": ["nft", "collectible", "art", "collection"],
+        "defi": ["defi", "finance", "swap", "dex", "lending", "yield"],
+        "game": ["game", "gaming", "play", "esport"],
+    }
+    for key, words in keywords.items():
+        if any(w in use_case_lower for w in words):
+            return USE_CASE_PRESETS[key]
+    return USE_CASE_PRESETS["general"]
 
 
-def get_all_presets() -> list[dict]:
+def get_all_presets() -> list:
     """Get all available presets."""
     return list(USE_CASE_PRESETS.values())
 
@@ -90,63 +96,29 @@ def get_default_value(use_case: str, field: str) -> Any:
     return preset["defaults"].get(field)
 
 
-def generate_validators(count: int) -> list[str]:
-    """Generate placeholder validator addresses."""
-    validators = []
-    for i in range(count):
-        # Generate address like 0x1111...1111, 0x2222...2222, etc.
-        hex_char = hex(i + 1)[2:]
-        addr = "0x" + hex_char * 40
-        validators.append(addr[:42])  # Ensure exactly 42 chars
-    return validators
-
-
-def generate_sequencer_url(chain_name: str) -> str:
-    """Generate a sequencer URL for a chain."""
-    clean_name = chain_name.lower().replace(" ", "-").replace("_", "-")
-    return f"https://sequencer-{clean_name}.example.com"
-
-
-def generate_explorer_url(chain_name: str) -> str:
-    """Generate an explorer URL for a chain."""
-    clean_name = chain_name.lower().replace(" ", "-").replace("_", "-")
-    return f"https://{clean_name}-explorer.example.com"
-
-
-def generate_rpc_url(chain_name: str) -> str:
-    """Generate an RPC URL for a chain."""
-    clean_name = chain_name.lower().replace(" ", "-").replace("_", "-")
-    return f"https://{clean_name}-rpc.example.com"
-
-
-# Default native token configurations
-DEFAULT_NATIVE_TOKEN = {
-    "name": "Ether",
-    "symbol": "ETH",
-    "decimals": 18,
-}
-
-
-# Parent chain options with display names
-PARENT_CHAINS = {
-    "arbitrum-sepolia": {
-        "name": "Arbitrum Sepolia",
-        "description": "Testnet - recommended for development",
-        "chain_id": 421614,
+# OneChain network info
+ONECHAIN_NETWORKS = {
+    "testnet": {
+        "name": "OneChain Testnet",
+        "rpc": "https://rpc-testnet.onelabs.cc:443",
+        "explorer": "https://explorer-testnet.onelabs.cc",
+        "faucet": "https://faucet.onelabs.cc",
     },
-    "arbitrum-one": {
-        "name": "Arbitrum One",
-        "description": "Mainnet - for production deployments",
-        "chain_id": 42161,
+    "mainnet": {
+        "name": "OneChain Mainnet",
+        "rpc": "https://rpc-mainnet.onelabs.cc:443",
+        "explorer": "https://explorer.onelabs.cc",
+        "faucet": None,
     },
-    "arbitrum-nova": {
-        "name": "Arbitrum Nova",
-        "description": "High-throughput chain with AnyTrust",
-        "chain_id": 42170,
+    "devnet": {
+        "name": "OneChain Devnet",
+        "rpc": "https://rpc-devnet.onelabs.cc:443",
+        "explorer": "https://explorer-devnet.onelabs.cc",
+        "faucet": "https://faucet-devnet.onelabs.cc",
     },
 }
 
 
-def get_parent_chain_info(parent_chain: str) -> dict:
-    """Get info about a parent chain."""
-    return PARENT_CHAINS.get(parent_chain, PARENT_CHAINS["arbitrum-sepolia"])
+def get_network_info(network: str) -> dict:
+    """Get info about a OneChain network."""
+    return ONECHAIN_NETWORKS.get(network, ONECHAIN_NETWORKS["testnet"])
