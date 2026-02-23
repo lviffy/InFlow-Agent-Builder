@@ -2,25 +2,25 @@
 
 ## Introduction
 
-**BlockOps** is a no-code AI-powered platform that enables users to build, deploy, and interact with blockchain agents on Arbitrum Sepolia. The platform combines a visual drag-and-drop workflow builder with AI-powered natural language processing, allowing users to create sophisticated blockchain automation workflows without writing any code.
+**BlockOps** is a no-code AI-powered platform that enables users to build, deploy, and interact with blockchain agents on **OneChain** (OCT-native Move-based chain). The platform combines a visual drag-and-drop workflow builder with AI-powered natural language processing, allowing users to create sophisticated blockchain automation workflows without writing any code.
 
-The platform supports blockchain operations including **ERC-20 token deployment, ERC-721 NFT collection deployment, token transfers, and more**. All operations are powered by Arbitrum Stylus smart contracts and integrated with Gemini 2.0 Flash AI for intelligent agent interactions.
+The platform supports blockchain operations including **Move token deployment, NFT collection deployment, token transfers, and more**. All operations are powered by OneChain Move smart contracts and integrated with Gemini 2.0 Flash AI for intelligent agent interactions.
 
-> **Note:** This is a complete full-stack application including frontend (Next.js), backend API (Express.js), AI agent services (FastAPI), and smart contracts (Rust/Stylus).
+> **Note:** This is a complete full-stack application including frontend (Next.js), backend API (Express.js), AI agent services (FastAPI), and smart contracts (Move).
 
 ## Resources
 
 * **Live Demo**: [https://blockops.vercel.app/](https://blockops.vercel.app/)
 * **Demo Video**: [Watch on Google Drive](https://drive.google.com/drive/folders/137-DEv4MkspcmfuAN-ETsxpGMqzmZeZl?usp=sharing)
-* **Payment Contract**: [View on Arbiscan](https://sepolia.arbiscan.io/address/0x185eba222e50dedae23a411bbbe5197ed9097381)
+* **Payment Contract**: [View on OneChain Explorer](https://explorer-testnet.onelabs.cc)
 
 ### Key Technologies
 
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, React Flow
-- **Backend**: Express.js, ethers.js v6
+- **Backend**: Express.js, `@mysten/sui` SDK
 - **AI Services**: FastAPI, Google Gemini 2.0 Flash
-- **Blockchain**: Arbitrum Sepolia, Stylus (Rust WASM contracts)
-- **Authentication**: Privy Auth
+- **Blockchain**: OneChain (OCT), Move smart contracts
+- **Authentication**: OneWallet via `@mysten/dapp-kit`
 - **Database**: Supabase (PostgreSQL)
 
 ---
@@ -30,7 +30,7 @@ The platform supports blockchain operations including **ERC-20 token deployment,
 Getting started with BlockOps is simple! Follow these steps:
 
 1. **Visit** [https://blockops.vercel.app/](https://blockops.vercel.app/)
-2. **Sign In** with Web3 wallet using Privy authentication
+2. **Sign In** by connecting your OneWallet (via the Connect button)
 3. **Create or Import Agent Wallet** 
    - Create a new agent wallet (automatically generated)
    - Or import your own wallet using a private key
@@ -53,9 +53,9 @@ Getting started with BlockOps is simple! Follow these steps:
 6. **Interact with Your Agent**:
    - **UI Chat Interface**: Chat with your agent using natural language
    - **API Integration**: Use REST API calls with your unique API key
-   - For premium features, payments are handled via x402 protocol with USDC escrow
+   - For premium features, payments are handled via x402 protocol with OCT escrow
 
-7. **Execute Blockchain Actions** seamlessly on Arbitrum Sepolia
+7. **Execute Blockchain Actions** seamlessly on OneChain (testnet or mainnet)
 
 That's it! You've created your first BlockOps agent without writing a single line of code!
 
@@ -89,7 +89,7 @@ graph TB
     end
     
     subgraph "Authentication & Database"
-        PRIVY[🔐 Privy Auth]
+        WALLET[🔐 OneWallet / dapp-kit]
         SUPA[🗄️ Supabase Database]
     end
     
@@ -100,27 +100,27 @@ graph TB
     end
     
     subgraph "Blockchain Layer"
-        ARB[🔗 Arbitrum Sepolia<br/>Chain ID: 421614]
+        ONE[🔗 OneChain (OCT)<br/>Testnet / Mainnet]
     end
     
-    subgraph "Smart Contracts"
-        TF[📝 Token Factory<br/>Stylus Contract]
-        NF[🎨 NFT Factory<br/>Stylus Contract]
+    subgraph "Smart Contracts (Move)"
+        TF[📝 Token Factory<br/>Move Module]
+        NF[🎨 NFT Factory<br/>Move Module]
         PE[💰 Payment Escrow<br/>x402 Protocol]
-        USDC[💵 USDC Token]
+        OCT[🪙 OCT Token]
     end
     
     U -->|User Actions| UI
-    UI <-->|Authentication| PRIVY
+    UI <-->|Connect Wallet| WALLET
     UI <-->|Data Storage| SUPA
     UI -->|AI Chat/Generate| AI
     UI -->|Workflow Build| WF
     AI -->|Tool Execution| BK
-    BK -->|Deploy/Transfer| ARB
-    ARB -->|Token Deploy| TF
-    ARB -->|NFT Deploy| NF
-    ARB -->|Payments| PE
-    PE -->|USDC Escrow| USDC
+    BK -->|Deploy/Transfer| ONE
+    ONE -->|Token Deploy| TF
+    ONE -->|NFT Deploy| NF
+    ONE -->|Payments| PE
+    PE -->|OCT Escrow| OCT
 ```
 
 ### Data Flow Diagram
@@ -161,7 +161,7 @@ sequenceDiagram
 - TypeScript
 - React Flow (visual workflow builder)
 - Tailwind CSS + Radix UI components
-- Privy for authentication
+- `@mysten/dapp-kit` + OneWallet for authentication
 - Supabase client for database
 
 **Key Features:**
@@ -185,26 +185,27 @@ sequenceDiagram
 
 **Technology Stack:**
 - Express.js
-- ethers.js v6 for Ethereum interactions
+- `@mysten/sui` SDK for OneChain interactions
 - Axios for HTTP requests
 - OpenAI/Gemini SDK for AI features
 
 **Network:**
-- Arbitrum Sepolia RPC: `https://sepolia-rollup.arbitrum.io/rpc`
-- Explorer: `https://sepolia.arbiscan.io`
-- Chain ID: 421614
+- OneChain Testnet RPC: `https://rpc-testnet.onelabs.cc:443`
+- OneChain Mainnet RPC: `https://rpc-mainnet.onelabs.cc:443`
+- Explorer: `https://explorer-testnet.onelabs.cc`
+- Native token: OCT (1 OCT = 1,000,000,000 MIST)
 
 **Key Responsibilities:**
-- Blockchain interaction via ethers.js
-- Smart contract deployment and interaction
-- Token/NFT creation via Stylus factory contracts
+- Blockchain interaction via `@mysten/sui`
+- Move package deployment and interaction
+- Token/NFT creation via Move factory modules
+- PTB (Programmable Transaction Block) construction
 - Transaction signing and broadcasting
-- Contract ABI management
 
 **Main Endpoints:**
 - `/health` - Health check
-- `/token/*` - ERC-20 token operations
-- `/nft/*` - ERC-721 NFT operations
+- `/token/*` - OCT fungible token operations
+- `/nft/*` - Move NFT operations
 - `/transfer` - Token transfer operations
 - `/price` - Token price fetching
 
@@ -254,80 +255,81 @@ sequenceDiagram
 
 ## Available Blockchain Tools
 
-### 1. ERC-20 Token Deployment
+### 1. Move Fungible Token Deployment
 
-**Description:** Deploy custom ERC-20 tokens on Arbitrum Sepolia using Stylus contracts written in Rust.
+**Description:** Deploy custom fungible tokens on OneChain using the Move token factory module.
 
 **Endpoint:** `POST /token/deploy`
 
 **Parameters:**
 - `name` - Token name (e.g., "MyToken")
 - `symbol` - Token symbol (e.g., "MTK")
-- `decimals` - Number of decimals (typically 18)
-- `initialSupply` - Initial token supply
-- `privateKey` - Deployer's private key
+- `decimals` - Number of decimals (typically 9)
+- `initialSupply` - Initial token supply (in smallest unit)
+- `ownerAddress` - Deployer's OneChain address
 
 **Implementation:**
-- Uses TokenFactory Stylus contract
-- Deploys optimized WASM bytecode
-- Automatically initializes token
-- Returns token address and transaction hash
+- Uses TokenFactory Move module
+- Constructs a Programmable Transaction Block (PTB)
+- Automatically initializes the `TreasuryCap` and `CoinMetadata` objects
+- Returns package ID and transaction digest
 
 **Example Response:**
 ```json
 {
   "success": true,
-  "tokenAddress": "0x...",
-  "transactionHash": "0x...",
-  "explorerUrl": "https://sepolia.arbiscan.io/tx/0x..."
+  "packageId": "0x...",
+  "transactionDigest": "ABC123...",
+  "explorerUrl": "https://explorer-testnet.onelabs.cc/txblock/ABC123..."
 }
 ```
 
-### 2. ERC-721 NFT Collection Deployment
+### 2. Move NFT Collection Deployment
 
-**Description:** Create NFT collections with customizable metadata and automatic IPFS integration.
+**Description:** Create NFT collections with customizable metadata on OneChain.
 
 **Endpoint:** `POST /nft/deploy-collection`
 
 **Parameters:**
 - `name` - Collection name
 - `symbol` - Collection symbol
-- `baseUri` - Base URI for metadata
-- `privateKey` - Deployer's private key
+- `description` - Collection description
+- `ownerAddress` - Deployer's OneChain address
 
 **Implementation:**
-- Uses NFTFactory Stylus contract
-- Supports batch minting
-- IPFS metadata storage via Pinata
-- Built with Rust for gas efficiency
+- Uses NFTFactory Move module
+- Supports batch minting via PTBs
+- On-chain metadata storage
+- Returns `CollectionCap` object ID
 
 **Example Response:**
 ```json
 {
   "success": true,
-  "collectionAddress": "0x...",
-  "transactionHash": "0x...",
-  "explorerUrl": "https://sepolia.arbiscan.io/address/0x..."
+  "packageId": "0x...",
+  "collectionCapId": "0x...",
+  "transactionDigest": "ABC123...",
+  "explorerUrl": "https://explorer-testnet.onelabs.cc/object/0x..."
 }
 ```
 
-### 3. Token Transfer
+### 3. OCT / Token Transfer
 
-**Description:** Transfer native ETH or ERC-20 tokens between addresses.
+**Description:** Transfer native OCT or Move fungible tokens between OneChain addresses.
 
 **Endpoint:** `POST /transfer`
 
 **Parameters:**
-- `privateKey` - Sender's private key
+- `senderAddress` - Sender's OneChain address
 - `to` - Recipient address
-- `amount` - Amount to transfer
-- `tokenAddress` - (Optional) ERC-20 token address
+- `amount` - Amount to transfer (in MIST for OCT)
+- `coinType` - (Optional) Move coin type for non-OCT transfers
 
 **Implementation:**
-- Native transfers use direct wallet transactions
-- ERC-20 transfers use token contract's `transfer()` function
-- Automatic gas estimation
-- Transaction confirmation waiting
+- Native OCT transfers use `sui.transferObjects` PTB
+- Custom coin transfers use the coin's `transfer` entry function
+- Automatic gas budget estimation
+- Returns transaction digest on confirmation
 
 ### 4. Token Price Fetching
 
@@ -347,120 +349,139 @@ sequenceDiagram
 
 ## Smart Contract Implementations
 
-### TokenFactory (Stylus - Rust)
+### TokenFactory (Move)
 
-**Location:** `contract/token_factory/`
+**Location:** `contract/token_factory_move/`
 
-**Technology:** Arbitrum Stylus (Rust → WASM)
+**Technology:** Move language on OneChain
 
 **Key Features:**
-- Full ERC-20 standard implementation
-- Gas-optimized WASM execution
-- Factory pattern for easy deployment
-- Customizable token parameters
+- Move `Coin<T>` standard implementation
+- Object-based ownership model
+- `TreasuryCap` mint/burn authority
+- Customizable `CoinMetadata`
 
 **Main Functions:**
-```rust
-// Initialize new token
-pub fn initialize(&mut self, name: String, symbol: String, decimals: u8, initial_supply: U256)
+```move
+// Create a new fungible token
+public fun create_token(
+    name: vector<u8>,
+    symbol: vector<u8>,
+    decimals: u8,
+    ctx: &mut TxContext
+): (TreasuryCap<TOKEN>, CoinMetadata<TOKEN>)
 
-// Standard ERC-20 functions
-pub fn transfer(&mut self, to: Address, amount: U256) -> bool
-pub fn approve(&mut self, spender: Address, amount: U256) -> bool
-pub fn transfer_from(&mut self, from: Address, to: Address, amount: U256) -> bool
+// Mint tokens
+public fun mint(
+    cap: &mut TreasuryCap<TOKEN>,
+    amount: u64,
+    recipient: address,
+    ctx: &mut TxContext
+)
 
-// View functions
-pub fn balance_of(&self, account: Address) -> U256
-pub fn total_supply(&self) -> U256
-pub fn allowance(&self, owner: Address, spender: Address) -> U256
+// Transfer
+public entry fun transfer(
+    coin: Coin<TOKEN>,
+    recipient: address,
+    ctx: &mut TxContext
+)
 ```
 
-**Build & Deploy:**
+**Deploy:**
 ```bash
-cd contract/token_factory
-cargo stylus check
-cargo stylus deploy --private-key=$PRIVATE_KEY
+cd contract/token_factory_move
+sui move build
+sui client publish --gas-budget 100000000
 ```
 
-### NFTFactory (Stylus - Rust)
+### NFTFactory (Move)
 
-**Location:** `contract/nft_factory/`
+**Location:** `contract/nft_factory_move/`
 
-**Technology:** Arbitrum Stylus (Rust → WASM)
+**Technology:** Move language on OneChain
 
 **Key Features:**
-- Full ERC-721 standard implementation
-- Batch minting support
-- Custom metadata URIs
-- Gas-efficient WASM execution
+- Move `Display` + object-based NFT standard
+- Batch minting via PTBs
+- On-chain metadata with `VecMap`
+- Transfer policy support
 
 **Main Functions:**
-```rust
+```move
 // Initialize collection
-pub fn initialize(&mut self, name: String, symbol: String, base_uri: String)
+public fun init_collection(
+    name: vector<u8>,
+    ctx: &mut TxContext
+): CollectionCap
 
-// Minting
-pub fn mint(&mut self, to: Address) -> U256
-pub fn mint_batch(&mut self, to: Address, amount: U256)
+// Mint NFT
+public fun mint_nft(
+    cap: &CollectionCap,
+    name: vector<u8>,
+    description: vector<u8>,
+    url: vector<u8>,
+    recipient: address,
+    ctx: &mut TxContext
+)
 
-// Standard ERC-721 functions
-pub fn transfer_from(&mut self, from: Address, to: Address, token_id: U256)
-pub fn approve(&mut self, to: Address, token_id: U256)
-pub fn set_approval_for_all(&mut self, operator: Address, approved: bool)
-
-// View functions
-pub fn owner_of(&self, token_id: U256) -> Address
-pub fn balance_of(&self, owner: Address) -> U256
-pub fn token_uri(&self, token_id: U256) -> String
+// Transfer
+public entry fun transfer_nft(
+    nft: NFT,
+    recipient: address,
+    ctx: &mut TxContext
+)
 ```
 
-**Build & Deploy:**
+**Deploy:**
 ```bash
-cd contract/nft_factory
-cargo stylus check
-cargo stylus deploy --private-key=$PRIVATE_KEY
+cd contract/nft_factory_move
+sui move build
+sui client publish --gas-budget 100000000
 ```
 
-### PaymentEscrow (Solidity)
+### PaymentEscrow (Move)
 
-**Location:** `contract/payment-contracts/contracts/PaymentEscrow.sol`
+**Location:** `contract/payment-contracts/`
 
-**Contract Address:** `0x185eba222e50dedae23a411bbbe5197ed9097381`
-
-**Technology:** Solidity + Hardhat
+**Technology:** Move language on OneChain
 
 **Key Features:**
 - x402 protocol implementation
-- USDC escrow for premium features
+- OCT escrow for premium features
 - Automatic refunds on failure
-- Authorization for backend execution
-- Pausable functionality
+- Capability-based backend authorization
+- Shared object escrow pattern
 
 **Main Functions:**
-```solidity
-// Create payment agreement
-function createPayment(
-    string memory agentId,
-    string memory toolName,
-    address token,
-    uint256 amount
-) external payable returns (bytes32)
+```move
+// Create payment escrow
+public fun create_payment(
+    agent_id: vector<u8>,
+    tool_name: vector<u8>,
+    coin: Coin<OCT>,
+    ctx: &mut TxContext
+): EscrowId
 
-// Execute payment (backend only)
-function executePayment(bytes32 paymentId) external
+// Execute payment (backend cap required)
+public fun execute_payment(
+    _cap: &BackendCap,
+    escrow: EscrowId,
+    ctx: &mut TxContext
+)
 
-// Refund payment (backend only)
-function refundPayment(bytes32 paymentId) external
-
-// Admin functions
-function setSupportedToken(address token, bool supported) external onlyOwner
-function setAuthorizedBackend(address backend, bool authorized) external onlyOwner
+// Refund payment (backend cap required)
+public fun refund_payment(
+    _cap: &BackendCap,
+    escrow: EscrowId,
+    ctx: &mut TxContext
+)
 ```
 
 **Deploy:**
 ```bash
 cd contract/payment-contracts
-npx hardhat run scripts/deploy.js --network arbitrumSepolia
+sui move build
+sui client publish --gas-budget 100000000
 ```
 
 ---
@@ -471,7 +492,7 @@ npx hardhat run scripts/deploy.js --network arbitrumSepolia
 
 - Node.js 18+ 
 - Python 3.9+
-- Rust (for Stylus contracts)
+- Move CLI (`sui` binary)
 - npm or yarn
 - Git
 
@@ -532,25 +553,25 @@ Workflow Generator will run on `http://localhost:8001`
 
 ### Smart Contract Deployment
 
-**Token Factory (Stylus):**
+**Token Factory (Move):**
 ```bash
-cd contract/token_factory
-cargo stylus check
-cargo stylus deploy --private-key-path=.env
+cd contract/token_factory_move
+sui move build
+sui client publish --gas-budget 100000000
 ```
 
-**NFT Factory (Stylus):**
+**NFT Factory (Move):**
 ```bash
-cd contract/nft_factory
-cargo stylus check
-cargo stylus deploy --private-key-path=.env
+cd contract/nft_factory_move
+sui move build
+sui client publish --gas-budget 100000000
 ```
 
-**Payment Contract (Solidity):**
+**Payment Contract (Move):**
 ```bash
 cd contract/payment-contracts
-npm install
-npx hardhat run scripts/deploy.js --network arbitrumSepolia
+sui move build
+sui client publish --gas-budget 100000000
 ```
 
 ---
@@ -564,16 +585,12 @@ npx hardhat run scripts/deploy.js --network arbitrumSepolia
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 
-# Privy Authentication
-NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
-
-# Blockchain
-NEXT_PUBLIC_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
-NEXT_PUBLIC_CHAIN_ID=421614
+# OneChain Wallet (via @mysten/dapp-kit)
+NEXT_PUBLIC_ONECHAIN_NETWORK=testnet
+NEXT_PUBLIC_ONECHAIN_TESTNET_RPC=https://rpc-testnet.onelabs.cc:443
 
 # Payment Contract
-NEXT_PUBLIC_PAYMENT_CONTRACT_ADDRESS=0x185eba222e50dedae23a411bbbe5197ed9097381
-NEXT_PUBLIC_USDC_ADDRESS=your_usdc_token_address
+NEXT_PUBLIC_PAYMENT_CONTRACT_PACKAGE=your_deployed_package_id
 
 # Backend URLs
 NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
@@ -581,7 +598,6 @@ NEXT_PUBLIC_AI_BACKEND_URL=http://localhost:8000
 NEXT_PUBLIC_WORKFLOW_BACKEND_URL=http://localhost:8001
 
 # Payment Backend
-PAYMENT_BACKEND_PRIVATE_KEY=your_backend_private_key
 JWT_SECRET=your_jwt_secret
 ```
 
@@ -592,14 +608,14 @@ JWT_SECRET=your_jwt_secret
 PORT=3000
 
 # Blockchain
-ARBITRUM_SEPOLIA_RPC=https://sepolia-rollup.arbitrum.io/rpc
-TOKEN_FACTORY_ADDRESS=your_token_factory_address
-NFT_FACTORY_ADDRESS=your_nft_factory_address
+ONECHAIN_TESTNET_RPC=https://rpc-testnet.onelabs.cc:443
+ONECHAIN_MAINNET_RPC=https://rpc-mainnet.onelabs.cc:443
+TOKEN_FACTORY_PACKAGE=your_token_factory_package_id
+NFT_FACTORY_PACKAGE=your_nft_factory_package_id
 
 # API Keys
 GEMINI_API_KEY=your_gemini_api_key
 OPENAI_API_KEY=your_openai_api_key
-ETHERSCAN_API_KEY=your_etherscan_api_key
 PINATA_API_KEY=your_pinata_api_key
 PINATA_SECRET_KEY=your_pinata_secret_key
 ```
@@ -640,9 +656,9 @@ Process natural language messages and execute blockchain actions.
   "results": {
     "tokenAddress": "0x...",
     "transactionHash": "0x...",
-    "explorerUrl": "https://sepolia.arbiscan.io/tx/0x..."
+    "explorerUrl": "https://explorer-testnet.onelabs.cc/txblock/ABC123..."
   },
-  "tool_used": "deploy_erc20"
+  "tool_used": "deploy_move_token"
 }
 ```
 
@@ -698,16 +714,16 @@ Generate workflow structure from natural language description.
 
 **POST** `/token/deploy`
 
-Deploy a new ERC-20 token using Stylus.
+Deploy a new Move fungible token.
 
 **Request:**
 ```json
 {
   "name": "MyToken",
   "symbol": "MTK",
-  "decimals": 18,
-  "initialSupply": "1000000",
-  "privateKey": "0x..."
+  "decimals": 9,
+  "initialSupply": "1000000000000",
+  "ownerAddress": "0x..."
 }
 ```
 
@@ -715,14 +731,14 @@ Deploy a new ERC-20 token using Stylus.
 ```json
 {
   "success": true,
-  "tokenAddress": "0x...",
-  "transactionHash": "0x...",
-  "explorerUrl": "https://sepolia.arbiscan.io/tx/0x...",
+  "packageId": "0x...",
+  "transactionDigest": "ABC123...",
+  "explorerUrl": "https://explorer-testnet.onelabs.cc/txblock/ABC123...",
   "tokenInfo": {
     "name": "MyToken",
     "symbol": "MTK",
-    "decimals": 18,
-    "totalSupply": "1000000000000000000000000"
+    "decimals": 9,
+    "totalSupply": "1000000000000"
   }
 }
 ```
@@ -731,15 +747,15 @@ Deploy a new ERC-20 token using Stylus.
 
 **POST** `/nft/deploy-collection`
 
-Deploy a new ERC-721 NFT collection using Stylus.
+Deploy a new Move NFT collection.
 
 **Request:**
 ```json
 {
   "name": "MyNFT Collection",
   "symbol": "MNFT",
-  "baseUri": "ipfs://QmXxx/",
-  "privateKey": "0x..."
+  "description": "A unique NFT collection on OneChain",
+  "ownerAddress": "0x..."
 }
 ```
 
@@ -747,9 +763,10 @@ Deploy a new ERC-721 NFT collection using Stylus.
 ```json
 {
   "success": true,
-  "collectionAddress": "0x...",
-  "transactionHash": "0x...",
-  "explorerUrl": "https://sepolia.arbiscan.io/address/0x..."
+  "packageId": "0x...",
+  "collectionCapId": "0x...",
+  "transactionDigest": "ABC123...",
+  "explorerUrl": "https://explorer-testnet.onelabs.cc/object/0x..."
 }
 ```
 
@@ -817,9 +834,9 @@ n8nrollup/
 │   └── requirements.txt
 │
 ├── contract/                # Smart contracts
-│   ├── token_factory/      # Stylus ERC-20 factory (Rust)
-│   ├── nft_factory/        # Stylus ERC-721 factory (Rust)
-│   └── payment-contracts/  # Payment escrow (Solidity)
+│   ├── token_factory_move/ # Move token factory module
+│   ├── nft_factory_move/   # Move NFT factory module
+│   └── payment-contracts/  # Payment escrow (Move)
 │
 ├── docker-compose.yml       # Docker orchestration
 ├── README.md               # This file
@@ -842,14 +859,14 @@ n8nrollup/
 - Save and load workflows
 
 ### 🔗 Blockchain Integration
-- Native support for Arbitrum Sepolia
-- Gas-optimized Stylus smart contracts (Rust → WASM)
-- ERC-20 and ERC-721 token deployment
-- Transaction signing and broadcasting
+- Native support for OneChain (testnet & mainnet)
+- Move-language smart contract modules
+- OCT fungible token and Move NFT deployment
+- Transaction signing and broadcasting via PTBs
 
 ### 💰 Payment System
 - x402 protocol integration
-- USDC escrow for premium features
+- OCT escrow for premium features
 - Automatic refunds on transaction failure
 - Pay-per-use pricing model
 

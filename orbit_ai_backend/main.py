@@ -1,7 +1,7 @@
 """
 Orbit AI Backend — FastAPI application.
 
-Multi-turn conversational AI for L3 chain configuration and deployment.
+Multi-turn conversational AI for OneChain Move package creation and deployment.
 """
 import os
 import logging

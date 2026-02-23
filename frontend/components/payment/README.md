@@ -5,17 +5,17 @@ Complete set of React components for the x402 payment system integration in Bloc
 ## 📦 Components Overview
 
 ### 1. PaymentModal
-**Purpose**: Handle USDC payments for tool usage
+**Purpose**: Handle OCT payments for tool usage
 
 **Features**:
-- ✅ Wallet connection via Privy
-- ✅ USDC balance checking
-- ✅ Token approval flow
+- ✅ Wallet connection via `@mysten/dapp-kit`
+- ✅ OCT balance checking
+- ✅ Coin object selection
 - ✅ Payment creation in escrow
 - ✅ Real-time transaction status
 - ✅ Payment verification with backend
 - ✅ Execution token generation
-- ✅ Network validation (Arbitrum Sepolia)
+- ✅ Network validation (OneChain)
 - ✅ Integration with PaymentAgreementModal
 
 **Usage**:
@@ -25,8 +25,8 @@ import { PaymentModal } from "@/components/payment"
 <PaymentModal
   open={showPayment}
   onOpenChange={setShowPayment}
-  toolName="deploy_erc20"
-  toolDisplayName="Deploy ERC-20 Token"
+  toolName="deploy_move_token"
+  toolDisplayName="Deploy Move Token"
   price="0.50"
   agentId={agentId}
   onPaymentSuccess={(txHash, executionToken) => {
@@ -44,7 +44,7 @@ import { PaymentModal } from "@/components/payment"
 - `onOpenChange` (function) - Handle modal state changes
 - `toolName` (string) - Internal tool identifier (e.g., "deploy_erc20")
 - `toolDisplayName` (string) - User-facing tool name
-- `price` (string) - Price in USDC (e.g., "0.25")
+- `price` (string) - Price in OCT (e.g., "0.25")
 - `agentId` (string, optional) - Associated agent ID
 - `onPaymentSuccess` (function, optional) - Callback with (paymentHash, executionToken)
 - `onPaymentError` (function, optional) - Callback with error message
@@ -134,7 +134,7 @@ import { AIQuotaBadge, AIQuotaBadgeCompact } from "@/components/payment"
 **Purpose**: Display tool pricing with interactive tooltip
 
 **Features**:
-- ✅ FREE or $X.XX USDC badge
+- ✅ FREE or $X.XX OCT badge
 - ✅ Hover card with detailed pricing info
 - ✅ Tool description and category
 - ✅ Escrow and refund information
@@ -157,7 +157,7 @@ import { ToolPricingBadge, ToolPriceIndicator } from "@/components/payment"
 />
 
 // Simple text indicator
-<ToolPriceIndicator toolName="deploy_erc20" />
+<ToolPriceIndicator toolName="deploy_move_token" />
 ```
 
 **Props**:
@@ -170,7 +170,7 @@ import { ToolPricingBadge, ToolPriceIndicator } from "@/components/payment"
 **Tooltip Content**:
 - Tool display name
 - Category badge
-- Price in USDC
+- Price in OCT
 - Tool description
 - Escrow information
 - Click instruction
@@ -183,7 +183,7 @@ import { ToolPricingBadge, ToolPriceIndicator } from "@/components/payment"
 **Features**:
 - ✅ 6 status states with icons and colors
 - ✅ Two variants: badge (minimal) and full (detailed)
-- ✅ Transaction hash with Arbiscan link
+- ✅ Transaction digest with OneChain Explorer link
 - ✅ Auto-refresh capability
 - ✅ Detailed payment information
 - ✅ Error message display
@@ -239,13 +239,13 @@ import { PaymentStatusIndicator, PaymentStatusIcon } from "@/components/payment"
 Add to `.env.local`:
 
 ```bash
-# Arbitrum Sepolia Configuration
-NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
-NEXT_PUBLIC_USDC_ADDRESS=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d
-NEXT_PUBLIC_PAYMENT_CONTRACT_ADDRESS=<deployed_contract_address>
+# OneChain Configuration
+NEXT_PUBLIC_ONECHAIN_TESTNET_RPC=https://rpc-testnet.onelabs.cc:443
+NEXT_PUBLIC_ONECHAIN_MAINNET_RPC=https://rpc-mainnet.onelabs.cc:443
+NEXT_PUBLIC_PAYMENT_CONTRACT_PACKAGE=<deployed_package_id>
 
-# Privy Authentication
-NEXT_PUBLIC_PRIVY_APP_ID=<your_privy_app_id>
+# OneChain Wallet (via @mysten/dapp-kit)
+NEXT_PUBLIC_ONECHAIN_NETWORK=testnet
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=<your_supabase_url>
@@ -256,8 +256,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
 All required dependencies are already installed:
 
 ```bash
-✅ @privy-io/react-auth@3.7.0
-✅ ethers@6.15.0
+✅ @mysten/dapp-kit
+✅ @mysten/sui
+✅ @tanstack/react-query
 ✅ lucide-react@0.454.0
 ✅ Radix UI components (dialog, badge, button, etc.)
 ```
@@ -469,7 +470,7 @@ export function AIWorkflowGenerator() {
 
 ## 🔐 Security Considerations
 
-1. **Never expose private keys** - All wallet operations use Privy's secure provider
+- ✅ All wallet operations use `@mysten/dapp-kit`'s secure provider
 2. **JWT tokens expire in 30 minutes** - Backend validates execution tokens
 3. **Payment verification is on-chain** - Cannot be spoofed
 4. **Escrow provides security** - Funds locked until service delivery
@@ -480,20 +481,20 @@ export function AIWorkflowGenerator() {
 
 ## 🐛 Troubleshooting
 
-### "Please switch to Arbitrum Sepolia network"
-**Solution**: User needs to switch their wallet to Arbitrum Sepolia (Chain ID: 421614)
+### "Please switch to OneChain network"
+**Solution**: User needs to connect their wallet to OneChain testnet via OneWallet
 
-### "Insufficient USDC balance"
-**Solution**: User needs to acquire USDC on Arbitrum Sepolia testnet
+### "Insufficient OCT balance"
+**Solution**: User needs to acquire OCT on OneChain testnet (use the testnet faucet)
 
 ### "Payment contract not configured"
-**Solution**: Ensure `NEXT_PUBLIC_PAYMENT_CONTRACT_ADDRESS` is set in `.env.local`
+**Solution**: Ensure `NEXT_PUBLIC_PAYMENT_CONTRACT_PACKAGE` is set in `.env.local`
 
 ### "Failed to check payment agreement"
 **Solution**: Verify `/api/payments/agreement` endpoint is working and user is authenticated
 
-### Privy wallet connection issues
-**Solution**: Check `NEXT_PUBLIC_PRIVY_APP_ID` is correct and Privy provider is wrapping the app
+### OneWallet connection issues
+**Solution**: Check `@mysten/dapp-kit` is properly configured and `SuiClientProvider` + `WalletProvider` are wrapping the app
 
 ---
 
@@ -512,7 +513,7 @@ export function AIWorkflowGenerator() {
 ## 🚀 Next Steps
 
 1. **Deploy Smart Contract** - Get contract address for `.env.local`
-2. **Test Payment Flow** - End-to-end testing with testnet USDC
+2. **Test Payment Flow** - End-to-end testing with testnet OCT
 3. **Add to Workflow Builder** - Integrate payment modals into workflow UI
 4. **Add to Agent Pages** - Show pricing badges on tools
 5. **Add to Navigation** - Show quota badge in header
@@ -541,7 +542,7 @@ All components integrate with these backend APIs:
 - [X402 Implementation Guide](../../X402_IMPLEMENTATION_GUIDE.md)
 - [Payment Backend Complete](../../PAYMENT_BACKEND_COMPLETE.md)
 - [Database Setup Guide](../../DATABASE_SETUP_GUIDE.md)
-- [Arbitrum Sepolia Setup](../../../contract/payment-contracts/ARBITRUM_SEPOLIA_SETUP.md)
+- [OneChain Move Package Setup](../../../contract/payment-contracts/README.md)
 - [Smart Contract README](../../../contract/payment-contracts/README.md)
 
 ---

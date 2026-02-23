@@ -92,13 +92,14 @@ frontend/
 - **Tailwind CSS** - Styling
 - **shadcn/ui** - UI components
 - **Supabase** - Authentication and data storage
-- **ethers.js** - Blockchain interaction
+- **`@mysten/dapp-kit`** - OneWallet connection and blockchain interaction
+- **`@mysten/sui`** - OneChain SDK
 
 ## Learn More
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [React Flow Documentation](https://reactflow.dev)
-- [Arbitrum Sepolia Network](https://docs.arbitrum.io/for-devs/concepts/public-chains)
+- [OneChain Documentation](https://docs.onelabs.cc)
 
 ## Deploy on Vercel
 
