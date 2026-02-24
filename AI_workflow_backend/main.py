@@ -16,7 +16,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Agent Workflow Builder API - Arbitrum Sepolia Edition")
+app = FastAPI(title="Agent Workflow Builder API - OneChain Edition")
 
 # Add CORS middleware to allow requests from anywhere
 app.add_middleware(
@@ -76,19 +76,19 @@ class WorkflowResponse(BaseModel):
 AVAILABLE_TOOLS = [
     "transfer",
     "get_balance",
-    "deploy_erc20",
-    "deploy_erc721",
+    "deploy_move_token",
+    "deploy_move_nft",
     "fetch_token_price",
     "send_email"
 ]
 
-SYSTEM_PROMPT = """You are an AI that converts natural language descriptions of blockchain agent workflows into structured JSON for the Arbitrum Sepolia blockchain.
+SYSTEM_PROMPT = """You are an AI that converts natural language descriptions of blockchain agent workflows into structured JSON for the OneChain blockchain.
 
 Available tools:
-- transfer: Transfer ETH or ERC-20 tokens between wallets
-- get_balance: Fetch balance of ETH for a wallet
-- deploy_erc20: Deploy ERC-20 tokens on Arbitrum Sepolia
-- deploy_erc721: Deploy ERC-721 NFT tokens on Arbitrum Sepolia
+- transfer: Transfer OCT or Move coins between wallets
+- get_balance: Fetch OCT balance of a wallet
+- deploy_move_token: Deploy Move fungible tokens on OneChain
+- deploy_move_nft: Deploy Move NFT collections on OneChain
 - fetch_token_price: Get the current price of any token using AI-powered search
 - send_email: Send email notifications to recipients (compose subject & body from user intent)
 
@@ -114,7 +114,7 @@ Return ONLY valid JSON matching this exact structure:
   "tools": [
     {
       "id": "tool_1",
-      "type": "deploy_erc20",
+      "type": "deploy_move_token",
       "name": "Token Deployment",
       "next_tools": ["tool_2"]
     },
@@ -258,9 +258,9 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Agent Workflow Builder",
-        "blockchain": "Arbitrum Sepolia",
+        "blockchain": "OneChain",
         "ai_providers": {
-            "primary": "Groq (llama-3.3-70b-versatile)" if GROQ_API_KEY else "Not configured",
+            "primary": "Groq (moonshotai/kimi-k2-instruct-0905)" if GROQ_API_KEYS else "Not configured",
             "fallback": "Google Gemini 2.0 Flash" if GEMINI_API_KEY else "Not configured"
         }
     }

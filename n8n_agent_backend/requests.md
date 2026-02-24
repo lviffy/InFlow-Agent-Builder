@@ -15,14 +15,14 @@
     {"tool": "fetch_price", "next_tool": null},
     {"tool": "wallet_analytics", "next_tool": null}
   ],
-  "user_message": "Check balance of 0x2514844F312c02Ae3C9d4fEb40db4eC8830b6844 and get ETH price",
+  "user_message": "Check balance of 0x2514844F312c02Ae3C9d4fEb40db4eC8830b6844 and get OCT price",
   "private_key": null
 }
 
 3. Complex Flow (Deploy → Airdrop → DAO)
 {
   "tools": [
-    {"tool": "deploy_erc20", "next_tool": "airdrop"},
+    {"tool": "deploy_move_token", "next_tool": "airdrop"},
     {"tool": "airdrop", "next_tool": "create_dao"},
     {"tool": "create_dao", "next_tool": null}
   ],
