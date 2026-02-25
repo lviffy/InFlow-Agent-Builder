@@ -16,7 +16,7 @@ console.log('Supabase initialized with URL:', supabaseUrl)
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
 export interface User {
-  id: string // Privy DID (format: did:privy:xxxxx)
+  id: string // Sui wallet address (from useCurrentAccount → account.address)
   private_key: string | null
   wallet_address: string | null
   created_at: string
