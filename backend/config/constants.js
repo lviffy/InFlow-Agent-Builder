@@ -19,6 +19,11 @@ module.exports = {
   NFT_FACTORY_PACKAGE_ID: process.env.NFT_FACTORY_PACKAGE_ID || '',
   PAYMENT_PACKAGE_ID: process.env.PAYMENT_PACKAGE_ID || '',
 
+  // Shared Object IDs (singleton objects created when packages were first published)
+  TOKEN_FACTORY_OBJECT_ID: process.env.TOKEN_FACTORY_OBJECT_ID || '',
+  NFT_FACTORY_OBJECT_ID: process.env.NFT_FACTORY_OBJECT_ID || '',
+  ESCROW_REGISTRY_OBJECT_ID: process.env.ESCROW_REGISTRY_OBJECT_ID || '',
+
   // OneChain-native product package IDs
   ONEDEX_PACKAGE_ID: process.env.ONEDEX_PACKAGE_ID || '',
   ONEID_PACKAGE_ID: process.env.ONEID_PACKAGE_ID || '',

@@ -1,6 +1,6 @@
 const { Transaction } = require('@mysten/sui/transactions');
-const { NFT_FACTORY_PACKAGE_ID, ACTIVE_NETWORK, NATIVE_TOKEN } = require('../config/constants');
-const { getKeypair, getBalance, executeTransaction, getObject } = require('../utils/blockchain');
+const { NFT_FACTORY_PACKAGE_ID, NFT_FACTORY_OBJECT_ID, ACTIVE_NETWORK, NATIVE_TOKEN } = require('../config/constants');
+const { getClient, getKeypair, getBalance, executeTransaction, getObject, resolveSharedObject, Inputs } = require('../utils/blockchain');
 const {
   successResponse, errorResponse, validateRequiredFields,
   getTxExplorerUrl, getObjectExplorerUrl, getPackageExplorerUrl, logTransaction,
@@ -8,9 +8,12 @@ const {
 
 async function deployNFTCollection(req, res) {
   try {
-    const { privateKey, name, symbol, baseUrl = '', totalSupply = 0, factoryObjectId } = req.body;
-    const validationError = validateRequiredFields(req.body, ['privateKey', 'name', 'symbol', 'factoryObjectId']);
+    const { privateKey, name, symbol, baseUrl = '', totalSupply = 0 } = req.body;
+    const factoryObjectId = req.body.factoryObjectId || NFT_FACTORY_OBJECT_ID;
+    const validationError = validateRequiredFields(req.body, ['privateKey', 'name', 'symbol']);
     if (validationError) return res.status(400).json(validationError);
+    if (!factoryObjectId)
+      return res.status(500).json(errorResponse('NFT_FACTORY_OBJECT_ID not configured'));
     if (!NFT_FACTORY_PACKAGE_ID || NFT_FACTORY_PACKAGE_ID === '0x0')
       return res.status(500).json(errorResponse('NFT_FACTORY_PACKAGE_ID not configured'));
     const keypair = getKeypair(privateKey);
@@ -20,10 +23,12 @@ async function deployNFTCollection(req, res) {
     if (BigInt(balanceInfo.totalBalance) === 0n)
       return res.status(400).json(errorResponse('No OCT for gas. Get testnet OCT from https://faucet-testnet.onelabs.cc'));
     const tx = new Transaction();
+    const client = getClient();
+    const factorySharedRef = await resolveSharedObject(factoryObjectId, client);
     tx.moveCall({
       target: `${NFT_FACTORY_PACKAGE_ID}::factory::create_collection`,
       arguments: [
-        tx.object(factoryObjectId),
+        tx.object(Inputs.SharedObjectRef(factorySharedRef)),
         tx.pure.vector('u8', Array.from(Buffer.from(name))),
         tx.pure.vector('u8', Array.from(Buffer.from(symbol))),
         tx.pure.vector('u8', Array.from(Buffer.from(baseUrl))),
@@ -52,14 +57,22 @@ async function deployNFTCollection(req, res) {
 
 async function mintNFT(req, res) {
   try {
-    const { privateKey, factoryObjectId, collectionObjectId, name, description = '', imageUrl = '', recipient, attributes = [] } = req.body;
-    const validationError = validateRequiredFields(req.body, ['privateKey', 'factoryObjectId', 'collectionObjectId', 'name', 'recipient']);
+    const { privateKey, collectionObjectId, name, description = '', imageUrl = '', recipient, attributes = [] } = req.body;
+    const factoryObjectId = req.body.factoryObjectId || NFT_FACTORY_OBJECT_ID;
+    const validationError = validateRequiredFields(req.body, ['privateKey', 'collectionObjectId', 'name', 'recipient']);
     if (validationError) return res.status(400).json(validationError);
+    if (!factoryObjectId)
+      return res.status(500).json(errorResponse('NFT_FACTORY_OBJECT_ID not configured - provide factoryObjectId or set env var'));
     const keypair = getKeypair(privateKey);
     const senderAddress = keypair.toSuiAddress();
     logTransaction('Mint NFT', { name, collectionObjectId, recipient });
     const attrKeys = attributes.map(a => Array.from(Buffer.from(String(a.key ?? ''))));
     const attrVals = attributes.map(a => Array.from(Buffer.from(String(a.value ?? ''))));
+    const client = getClient();
+    const [factorySharedRef, collectionSharedRef] = await Promise.all([
+      resolveSharedObject(factoryObjectId, client),
+      resolveSharedObject(collectionObjectId, client),
+    ]);
     const tx = new Transaction();
     const attrObjs = attributes.map((_, i) => tx.moveCall({
       target: `${NFT_FACTORY_PACKAGE_ID}::factory::new_attribute`,
@@ -68,7 +81,8 @@ async function mintNFT(req, res) {
     tx.moveCall({
       target: `${NFT_FACTORY_PACKAGE_ID}::factory::mint_nft`,
       arguments: [
-        tx.object(factoryObjectId), tx.object(collectionObjectId),
+        tx.object(Inputs.SharedObjectRef(factorySharedRef)),
+        tx.object(Inputs.SharedObjectRef(collectionSharedRef)),
         tx.pure.vector('u8', Array.from(Buffer.from(name))),
         tx.pure.vector('u8', Array.from(Buffer.from(description))),
         tx.pure.vector('u8', Array.from(Buffer.from(imageUrl))),
@@ -76,6 +90,7 @@ async function mintNFT(req, res) {
         tx.pure.address(recipient),
       ],
     });
+
     const result = await executeTransaction(tx, keypair);
     const digest = result.digest;
     const created = result.objectChanges?.filter(c => c.type === 'created') ?? [];

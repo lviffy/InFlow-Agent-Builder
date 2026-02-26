@@ -1,10 +1,11 @@
+const { getClient, getKeypair, getBalance, executeTransaction, getObject, getOwnedObjects, resolveSharedObject, Inputs } = require('../utils/blockchain');
 const { Transaction } = require('@mysten/sui/transactions');
 const {
   TOKEN_FACTORY_PACKAGE_ID,
+  TOKEN_FACTORY_OBJECT_ID,
   ACTIVE_NETWORK,
   NATIVE_TOKEN,
 } = require('../config/constants');
-const { getClient, getKeypair, getBalance, executeTransaction, getObject, getOwnedObjects } = require('../utils/blockchain');
 const {
   successResponse,
   errorResponse,
@@ -25,7 +26,8 @@ const {
  */
 async function deployToken(req, res) {
   try {
-    const { privateKey, name, symbol, decimals = 9, initialSupply, factoryObjectId } = req.body;
+    const { privateKey, name, symbol, decimals = 9, initialSupply } = req.body;
+    const factoryObjectId = req.body.factoryObjectId || TOKEN_FACTORY_OBJECT_ID;
 
     const validationError = validateRequiredFields(req.body, ['privateKey', 'name', 'symbol', 'initialSupply']);
     if (validationError) return res.status(400).json(validationError);
@@ -33,6 +35,11 @@ async function deployToken(req, res) {
     if (!TOKEN_FACTORY_PACKAGE_ID || TOKEN_FACTORY_PACKAGE_ID === '0x0') {
       return res.status(500).json(
         errorResponse('TOKEN_FACTORY_PACKAGE_ID not configured. Deploy the Move package first.')
+      );
+    }
+    if (!factoryObjectId) {
+      return res.status(500).json(
+        errorResponse('TOKEN_FACTORY_OBJECT_ID not configured. Set env var or pass factoryObjectId.')
       );
     }
 
@@ -50,16 +57,20 @@ async function deployToken(req, res) {
 
     // Build PTB
     const tx = new Transaction();
-    tx.moveCall({
+    const client = getClient();
+    const factorySharedRef = await resolveSharedObject(factoryObjectId, client);
+    const [token, mintCap] = tx.moveCall({
       target: `${TOKEN_FACTORY_PACKAGE_ID}::factory::create_token`,
       arguments: [
-        tx.object(factoryObjectId),                      // &mut TokenFactory (shared)
+        tx.object(Inputs.SharedObjectRef(factorySharedRef)),
         tx.pure.vector('u8', Array.from(Buffer.from(name))),
         tx.pure.vector('u8', Array.from(Buffer.from(symbol))),
         tx.pure.u8(decimals),
         tx.pure.u64(BigInt(initialSupply)),
       ],
     });
+    // Transfer Token and MintCap to sender (both are non-droppable resources)
+    tx.transferObjects([token, mintCap], senderAddress);
 
     const result = await executeTransaction(tx, keypair);
     const digest = result.digest;

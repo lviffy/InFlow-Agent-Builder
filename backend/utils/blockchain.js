@@ -1,8 +1,12 @@
-const { SuiClient } = require('@mysten/sui/client');
+const { SuiJsonRpcClient } = require('@mysten/sui/jsonRpc');
 const { Ed25519Keypair } = require('@mysten/sui/keypairs/ed25519');
-const { Transaction } = require('@mysten/sui/transactions');
+const { Transaction, Inputs } = require('@mysten/sui/transactions');
 const { fromB64 } = require('@mysten/sui/utils');
+const { decodeSuiPrivateKey } = require('@mysten/sui/cryptography');
 const { ONECHAIN_TESTNET_RPC, ONECHAIN_MAINNET_RPC, ACTIVE_NETWORK, MIST_PER_OCT } = require('../config/constants');
+
+// OCT coin type (native gas token on OneChain)
+const OCT_COIN_TYPE = '0x2::oct::OCT';
 
 /**
  * Get the active RPC URL based on ACTIVE_NETWORK env variable
@@ -13,26 +17,30 @@ function getRpcUrl() {
 }
 
 /**
- * Get a SuiClient instance connected to OneChain
- * @returns {SuiClient} Client instance
+ * Get a SuiJsonRpcClient instance connected to OneChain
+ * @returns {SuiJsonRpcClient}
  */
 function getClient() {
-  return new SuiClient({ url: getRpcUrl() });
+  return new SuiJsonRpcClient({ url: getRpcUrl() });
 }
 
 /**
- * Get a keypair from a base64-encoded secret key or hex private key
- * @param {string} secretKey - Base64 secret key (from `one keytool export`) or 0x hex private key
- * @returns {Ed25519Keypair} Keypair instance
+ * Get a keypair from various key formats:
+ *   - suiprivkey1... (Bech32, from `one keytool export`)
+ *   - 0x{hex}       (raw 32-byte hex private key)
+ *   - base64         (legacy base64-encoded 32-byte key)
+ * @param {string} secretKey
+ * @returns {Ed25519Keypair}
  */
 function getKeypair(secretKey) {
   if (!secretKey) throw new Error('Secret key is required');
-  // Support both base64 (from OneChain CLI keystore) and raw hex
-  if (secretKey.startsWith('0x')) {
-    const hex = secretKey.slice(2);
-    return Ed25519Keypair.fromSecretKey(Buffer.from(hex, 'hex'));
+  if (secretKey.startsWith('suiprivkey')) {
+    const { secretKey: keyBytes } = decodeSuiPrivateKey(secretKey);
+    return Ed25519Keypair.fromSecretKey(keyBytes);
   }
-  // Assume base64
+  if (secretKey.startsWith('0x')) {
+    return Ed25519Keypair.fromSecretKey(Buffer.from(secretKey.slice(2), 'hex'));
+  }
   return Ed25519Keypair.fromSecretKey(fromB64(secretKey));
 }
 
@@ -46,7 +54,7 @@ async function getBalance(address) {
   const balance = await client.getBalance({ owner: address });
   const inOCT = (BigInt(balance.totalBalance) / MIST_PER_OCT).toString();
   return {
-    totalBalance: balance.totalBalance,  // in MIST
+    totalBalance: balance.totalBalance,
     inOCT,
     formatted: `${inOCT} OCT`,
   };
@@ -86,28 +94,81 @@ async function getObject(objectId) {
 }
 
 /**
- * Execute a signed transaction
- * @param {Transaction} tx - Transaction to execute
+ * Resolve a shared object ID → SharedObjectRef with initialSharedVersion.
+ * Uses a cached in-memory map to avoid redundant RPC calls within one session.
+ * @param {string} objectId
+ * @param {SuiJsonRpcClient} client
+ * @returns {Promise<{objectId: string, initialSharedVersion: number|string, mutable: boolean}>}
+ */
+const _sharedVersionCache = new Map();
+async function resolveSharedObject(objectId, client) {
+  if (_sharedVersionCache.has(objectId)) {
+    return _sharedVersionCache.get(objectId);
+  }
+  const resp = await client.getObject({ id: objectId, options: { showOwner: true } });
+  const ver = resp.data?.owner?.Shared?.initial_shared_version;
+  if (ver == null) throw new Error(`Object ${objectId} is not a shared object`);
+  const ref = { objectId, initialSharedVersion: ver, mutable: true };
+  _sharedVersionCache.set(objectId, ref);
+  return ref;
+}
+
+/**
+ * Execute a PTB on OneChain.
+ *
+ * Internally: resolves gas price + gas coins via JSON-RPC, builds the
+ * full transaction bytes offline, signs and submits.
+ *
+ * Callers must ensure all shared objects in the PTB are passed using
+ * tx.object(Inputs.SharedObjectRef({...})) — use buildSharedObjectArg() helper
+ * if needed, or call prepareSharedObjectRef() to resolve initialSharedVersion.
+ *
+ * @param {Transaction} tx - PTB with all arguments already set
  * @param {Ed25519Keypair} keypair - Signer keypair
- * @returns {Promise<Object>} Transaction result
+ * @returns {Promise<Object>} Transaction result with digest and objectChanges
  */
 async function executeTransaction(tx, keypair) {
   const client = getClient();
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
+  const senderAddress = keypair.toSuiAddress();
+
+  tx.setSender(senderAddress);
+
+  // Gas price
+  const gasPrice = await client.getReferenceGasPrice();
+  tx.setGasPrice(Number(gasPrice));
+
+  // Gas budget (estimate or fallback)
+  tx.setGasBudget(100_000_000); // 0.1 OCT — safe default; over-estimated is fine
+
+  // Gas payment coins
+  const coinsResp = await client.getCoins({ owner: senderAddress, coinType: OCT_COIN_TYPE });
+  if (!coinsResp.data.length) {
+    throw new Error('No OCT gas coins found. Get testnet OCT from https://faucet-testnet.onelabs.cc');
+  }
+  tx.setGasPayment(coinsResp.data.map(c => ({
+    objectId: c.coinObjectId,
+    version: c.version,
+    digest: c.digest,
+  })));
+
+  // Build, sign, execute
+  const txBytes = await tx.build({ onlyTransactionKind: false });
+  const { signature, bytes } = await keypair.signTransaction(txBytes);
+
+  const result = await client.executeTransactionBlock({
+    transactionBlock: bytes,   // already base64 string from signTransaction
+    signature: [signature],
     options: { showEffects: true, showObjectChanges: true },
   });
-  // Wait for finalization
+
   await client.waitForTransaction({ digest: result.digest });
   return result;
 }
 
 /**
- * Get normalized Move module info (replaces Etherscan ABI lookup)
+ * Get normalized Move module info
  * @param {string} packageId - Move package ID
  * @param {string} moduleName - Module name
- * @returns {Promise<Object>} Module info with functions and structs
  */
 async function getMoveModule(packageId, moduleName) {
   const client = getClient();
@@ -117,7 +178,6 @@ async function getMoveModule(packageId, moduleName) {
 /**
  * Get all modules in a Move package
  * @param {string} packageId - Move package ID
- * @returns {Promise<Object>} All module info
  */
 async function getMovePackage(packageId) {
   const client = getClient();
@@ -135,6 +195,7 @@ module.exports = {
   executeTransaction,
   getMoveModule,
   getMovePackage,
-  // Re-export Transaction for convenience in controllers
+  resolveSharedObject,
+  Inputs,
   Transaction,
 };
