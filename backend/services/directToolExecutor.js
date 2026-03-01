@@ -652,17 +652,27 @@ function formatToolResponse(toolResults) {
 
   const messages = toolResults.results.map((result, index) => {
     const tool = toolResults.tool_calls[index]?.tool;
-    if (!result?.success) {
-      return `${tool}: ${result?.error || 'Failed to execute tool.'}`;
-    }
-
     const payload = result.result || {};
+    
+    // Native token responses come back as success=true from the updated priceController,
+    // but guard here anyway: if there's a native_tokens payload, show it.
+    if (!result?.success) {
+      if (tool === 'fetch_price' && payload.native_tokens?.length) {
+        // fall through to switch so native token message is shown
+      } else {
+        return `${tool}: ${result?.error || 'Failed to execute tool.'}`;
+      }
+    }
 
     switch (tool) {
       case 'fetch_price': {
+        // Handle native/unlisted tokens (e.g. OCT)
+        if (payload.native_tokens && payload.native_tokens.length > 0) {
+          return payload.message || payload.native_tokens.map(t => `**${t.name}**: ${t.note}`).join('\n\n');
+        }
         const prices = payload.prices || [];
         if (!prices.length) {
-          return 'Price data not available.';
+          return 'Price data not available for this token.';
         }
         const formatted = prices.map(price => {
           const currency = (price.currency || '').toUpperCase();

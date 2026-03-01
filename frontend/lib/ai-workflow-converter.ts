@@ -3,34 +3,62 @@ import { createNode, generateNodeId } from './workflow-utils'
 
 // Map AI tool types to our in-app tool types
 const toolTypeMap: Record<string, string> = {
+  // Core transfer & balance
   transfer: 'transfer',
-  swap: 'swap',
   get_balance: 'get_balance',
   stt_balance_fetch: 'get_balance',
   balance: 'get_balance',
-  // Move / OneChain-specific tool names returned by AI backend
+  get_token_balance: 'get_balance',
+
+  // Token deployment (Move-specific names AI returns)
   deploy_move_token: 'deploy_token',
+  deploy_move_package: 'deploy_token',
+  deploy_token: 'deploy_token',
+
+  // NFT (Move-specific names AI returns)
   deploy_move_nft: 'deploy_nft_collection',
   deploy_move_nft_collection: 'deploy_nft_collection',
-  mint_nft: 'deploy_nft_collection',
-  deploy_move_package: 'deploy_token',
+  deploy_nft_collection: 'deploy_nft_collection',
+  mint_nft: 'mint_nft',
+  get_nft_info: 'deploy_nft_collection',
+
+  // Prices
   fetch_token_price: 'fetch_price',
+  fetch_price: 'fetch_price',
   get_price: 'fetch_price',
   price: 'fetch_price',
+
+  // Notifications
   send_email: 'send_email',
   email: 'send_email',
-  // Legacy / generic names
-  deploy_token: 'deploy_token',
-  deploy_nft_collection: 'deploy_nft_collection',
-  create_dao: 'create_dao',
-  airdrop: 'airdrop',
-  deposit_with_yield_prediction: 'deposit_yield',
-  condition_check: 'condition_check',
-  yes_no_answer: 'yes_no_answer',
-  yes_no: 'yes_no_answer',
-  boolean_check: 'condition_check',
   send_webhook: 'send_webhook',
   webhook: 'send_webhook',
+
+  // DeFi
+  swap: 'swap',
+  airdrop: 'airdrop',
+  deposit_yield: 'deposit_yield',
+  deposit_with_yield_prediction: 'deposit_yield',
+  wrap_oct: 'wrap_oct',
+  approve_token: 'approve_token',
+  revoke_approval: 'revoke_approval',
+
+  // Token info
+  get_token_info: 'token_metadata',
+  token_metadata: 'token_metadata',
+
+  // Transaction & wallet info
+  tx_status: 'tx_status',
+  wallet_history: 'wallet_history',
+
+  // Logic / conditions
+  condition_check: 'condition_check',
+  boolean_check: 'condition_check',
+  yes_no_answer: 'yes_no_answer',
+  yes_no: 'yes_no_answer',
+
+  // DAO Governance
+  create_dao: 'create_dao',
   create_proposal: 'create_proposal',
   vote_on_proposal: 'vote_on_proposal',
   vote: 'vote_on_proposal',
@@ -70,19 +98,35 @@ export function aiResponseToWorkflow(aiResponse: AIResponse): { nodes: Node[]; e
     
     // Check if this tool type exists in our system
     const validToolTypes = [
+      // Transfer & balance
       'transfer',
-      'swap',
       'get_balance',
+      // Token
       'deploy_token',
+      'token_metadata',
+      'approve_token',
+      'revoke_approval',
+      // NFT
       'deploy_nft_collection',
-      'create_dao',
-      'airdrop',
+      'mint_nft',
+      // Price
       'fetch_price',
+      // DeFi
+      'swap',
+      'airdrop',
       'deposit_yield',
-      'condition_check',
-      'yes_no_answer',
+      'wrap_oct',
+      // Tx & wallet info
+      'tx_status',
+      'wallet_history',
+      // Notifications
       'send_email',
       'send_webhook',
+      // Logic
+      'condition_check',
+      'yes_no_answer',
+      // DAO Governance
+      'create_dao',
       'create_proposal',
       'vote_on_proposal',
       'get_proposal',

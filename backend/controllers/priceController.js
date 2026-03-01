@@ -52,10 +52,21 @@ const CRYPTO_MAPPINGS = {
   'arbitrum': 'arbitrum',
   'op': 'optimism',
   'optimism': 'optimism',
-  'oct': 'octoken',
-  'octoken': 'octoken',
-  'onechain': 'octoken',
-  'one': 'octoken'
+  // OCT / OneChain native token — NOT listed on CoinGecko, handled via NATIVE_TOKENS below
+  'oct': '_native_oct',
+  'octoken': '_native_oct',
+  'onechain': '_native_oct',
+  'one': '_native_oct'
+};
+
+// Native / unlisted tokens with their info (not available on CoinGecko)
+const NATIVE_TOKENS = {
+  '_native_oct': {
+    name: 'OCT (OneChain Native Token)',
+    symbol: 'OCT',
+    note: 'OCT is the native gas token of the OneChain network. It is not yet listed on major exchanges like CoinGecko. Check the official OneChain network or onelabs.cc for the latest token information.',
+    network: 'OneChain (Move-based)'
+  }
 };
 
 /**
@@ -189,26 +200,53 @@ const getTokenPrice = async (req, res) => {
 
     console.log('Identified cryptocurrencies:', coinIds);
 
-    // Fetch prices from CoinGecko
-    const priceData = await fetchFromCoinGecko(coinIds, vsCurrency);
-
-    // Format response
-    const prices = [];
+    // Check for native/unlisted tokens first (not on CoinGecko)
+    const nativeResponses = [];
+    const geckoIds = [];
     for (const coinId of coinIds) {
-      if (priceData[coinId]) {
-        const data = priceData[coinId];
-        prices.push({
-          coin: coinId,
-          price: data[vsCurrency],
-          currency: vsCurrency.toUpperCase(),
-          change_24h: data[`${vsCurrency}_24h_change`] || null,
-          market_cap: data[`${vsCurrency}_market_cap`] || null,
-          volume_24h: data[`${vsCurrency}_24h_vol`] || null
-        });
+      if (NATIVE_TOKENS[coinId]) {
+        nativeResponses.push(NATIVE_TOKENS[coinId]);
+      } else {
+        geckoIds.push(coinId);
       }
     }
 
-    if (prices.length === 0) {
+    // If ALL tokens are native/unlisted, return immediately without hitting CoinGecko
+    if (nativeResponses.length > 0 && geckoIds.length === 0) {
+      return res.json({
+        success: true,
+        query: query,
+        native_tokens: nativeResponses,
+        prices: [],
+        message: nativeResponses.map(t => `**${t.name}**: ${t.note}`).join('\n\n'),
+        source: 'Native Token Info',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Fetch prices from CoinGecko for non-native tokens
+    const prices = [];
+
+    if (geckoIds.length > 0) {
+      const priceData = await fetchFromCoinGecko(geckoIds, vsCurrency);
+
+      for (const coinId of geckoIds) {
+        if (priceData[coinId]) {
+          const data = priceData[coinId];
+          prices.push({
+            coin: coinId,
+            price: data[vsCurrency],
+            currency: vsCurrency.toUpperCase(),
+            change_24h: data[`${vsCurrency}_24h_change`] || null,
+            market_cap: data[`${vsCurrency}_market_cap`] || null,
+            volume_24h: data[`${vsCurrency}_24h_vol`] || null
+          });
+        }
+      }
+    }
+
+    // Combine gecko prices + native token info
+    if (prices.length === 0 && nativeResponses.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'No price data found for the requested cryptocurrencies',
@@ -216,13 +254,20 @@ const getTokenPrice = async (req, res) => {
       });
     }
 
-    return res.json({
+    const response = {
       success: true,
       query: query,
       prices: prices,
       source: 'CoinGecko API',
       timestamp: new Date().toISOString()
-    });
+    };
+
+    if (nativeResponses.length > 0) {
+      response.native_tokens = nativeResponses;
+      response.message = nativeResponses.map(t => `**${t.name}**: ${t.note}`).join('\n\n');
+    }
+
+    return res.json(response);
 
   } catch (error) {
     console.error('Token price error:', error);

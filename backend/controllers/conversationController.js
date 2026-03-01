@@ -19,13 +19,6 @@ async function chat(req, res) {
       });
     }
 
-    // Log wallet address for debugging
-    if (walletAddress) {
-      console.log('[Chat] User wallet address:', walletAddress);
-    } else {
-      console.log('[Chat] No wallet address provided');
-    }
-
     // Truncate message if too long
     const truncatedMessage = truncateMessage(message);
 
@@ -50,10 +43,8 @@ async function chat(req, res) {
           .single();
         
         if (error) {
-          console.error('Error creating conversation:', error);
           // If it's a foreign key error (agent doesn't exist), fall back to in-memory mode
           if (error.code === '23503' || error.code === '22P02') {
-            console.log('[Chat] Agent not in database or invalid ID, falling back to memory-only mode');
             convId = `temp-${Date.now()}`;
             isNewConversation = true;
             messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
@@ -79,9 +70,7 @@ async function chat(req, res) {
           });
 
         if (msgError) {
-          console.error('Error saving user message:', msgError);
-          // Don't throw, just log and continue in memory-only mode
-          console.log('[Chat] Continuing in memory-only mode');
+          // Don't throw, just continue in memory-only mode
           messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
         }
       }
@@ -95,8 +84,6 @@ async function chat(req, res) {
           .order('created_at', { ascending: true });
 
         if (fetchError) {
-          console.error('Error fetching messages:', fetchError);
-          console.log('[Chat] Using in-memory messages instead');
           messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
         } else {
           messages = messageData;
@@ -104,7 +91,6 @@ async function chat(req, res) {
       }
     } else {
       // In-memory mode (no persistence) - Supabase not configured
-      console.log('[Chat] Running in memory-only mode (Supabase not configured)');
       convId = conversationId || `temp-${Date.now()}`;
       isNewConversation = !conversationId;
       
@@ -115,17 +101,7 @@ async function chat(req, res) {
     }
 
     // Check if the message requires tools using intelligent AI routing
-    console.log('[Chat] Analyzing message for tool requirements...');
-    
     const routingPlan = await intelligentToolRouting(truncatedMessage, messages);
-    
-    console.log('[Chat] Routing analysis:', {
-      isOffTopic: routingPlan.is_off_topic,
-      requiresTools: routingPlan.requires_tools,
-      complexity: routingPlan.complexity,
-      executionType: routingPlan.execution_plan?.type,
-      toolCount: routingPlan.execution_plan?.steps?.length || 0
-    });
     
     // Guard rail: Reject off-topic questions
     if (routingPlan.is_off_topic) {
@@ -164,9 +140,6 @@ async function chat(req, res) {
       const trulyMissingInfo = (routingPlan.missing_info || []).filter(info => {
         // Keep only info that no tool can resolve
         const isToolResolvable = toolResolvablePatterns.some(pattern => pattern.test(info));
-        if (isToolResolvable) {
-          console.log(`[Chat] Auto-resolving via tools: "${info}"`);
-        }
         return !isToolResolvable;
       });
       
@@ -175,11 +148,9 @@ async function chat(req, res) {
       const finalMissingInfo = trulyMissingInfo.filter(info => {
         // Check if the missing info might already be in conversation context
         if (/address/i.test(info) && /0x[a-fA-F0-9]{40}/.test(contextStr)) {
-          console.log(`[Chat] Address found in context, removing from missing: "${info}"`);
           return false;
         }
         if (/balance/i.test(info) && /\d+\.?\d*\s*ETH/i.test(contextStr)) {
-          console.log(`[Chat] Balance found in context, removing from missing: "${info}"`);
           return false;
         }
         return true;
@@ -213,8 +184,6 @@ async function chat(req, res) {
       // Convert routing plan to agent format
       const tools = convertToAgentFormat(routingPlan);
       
-      console.log('[Chat] Executing tools:', tools.map(t => `${t.tool}${t.next_tool ? ` → ${t.next_tool}` : ''}`).join(', '));
-      
       try {
         // Build context summary from recent messages for the agent
         const recentMessages = messages.slice(-10);
@@ -245,7 +214,8 @@ async function chat(req, res) {
         // Enhance user message with conversation context and routing analysis
         const enhancedMessage = `${routingPlan.analysis}\n\nConversation history:\n${contextSummary}${dataContext}\n\nCurrent user query: ${truncatedMessage}\n\nExecution plan: ${routingPlan.execution_plan.type} with ${routingPlan.execution_plan.steps.length} steps: ${routingPlan.execution_plan.steps.map(s => s.tool).join(' → ')}`;
         
-        const agentResponse = await fetch('http://localhost:8000/agent/chat', {
+        const agentBackendUrl = process.env.N8N_AGENT_BACKEND_URL || 'http://localhost:8000';
+        const agentResponse = await fetch(`${agentBackendUrl}/agent/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -263,6 +233,17 @@ async function chat(req, res) {
 
         const agentData = await agentResponse.json();
         aiResponse = agentData.agent_response;
+
+        // Detect soft rate-limit / provider-failure responses returned as HTTP 200
+        // and force the fallback path (direct tool executor) to run instead
+        const isRateLimitedResponse = typeof aiResponse === 'string' && (
+          /rate limit exceeded/i.test(aiResponse) ||
+          /please try again in a few moments/i.test(aiResponse) ||
+          (agentData.provider && /rate limited/i.test(agentData.provider))
+        );
+        if (isRateLimitedResponse) {
+          throw new Error(`Agent backend rate-limited: ${aiResponse}`);
+        }
         
         // Clean up AI thinking/reasoning that leaks into responses
         aiResponse = aiResponse
@@ -287,24 +268,20 @@ async function chat(req, res) {
         toolResults = {
           tool_calls: agentData.tool_calls || [],
           results: agentData.results || [],
-          routing_plan: routingPlan // Include routing plan for debugging
+          routing_plan: routingPlan
         };
-        
-        console.log('[Chat] Agent backend response received with', agentData.tool_calls?.length || 0, 'tool calls');
       } catch (agentError) {
-        console.error('[Chat] Agent backend failed:', agentError.message);
+        // Always try direct tool execution first before falling back to simple chat
         
-        // Check if it's an AI provider issue - if so, try direct tool execution
-        if (agentError.message?.includes('rate limited') || agentError.message?.includes('503') || agentError.message?.includes('AI provider')) {
-          console.log('[Chat] AI provider issue detected, attempting direct tool execution...');
+        try {
+          const directExecResult = await executeToolsDirectlyService(routingPlan, truncatedMessage);
           
-          try {
-            const directExecResult = await executeToolsDirectlyService(routingPlan, truncatedMessage);
+          if (directExecResult && directExecResult.results && directExecResult.results.length > 0) {
+            const formatted = formatToolResponse(directExecResult);
+            const hasAnyData = directExecResult.results.some(r => r.success || (r.result && (r.result.native_tokens || r.result.message)));
             
-            if (directExecResult && directExecResult.results && directExecResult.results.length > 0 && directExecResult.results.some(r => r.success)) {
-              // Successfully executed tools directly!
-              console.log('[Chat] Direct tool execution succeeded');
-              aiResponse = formatToolResponse(directExecResult);
+            if (hasAnyData || formatted) {
+              aiResponse = formatted || 'Tool executed but no output was produced.';
               toolResults = {
                 tool_calls: directExecResult.tool_calls,
                 results: directExecResult.results,
@@ -312,16 +289,13 @@ async function chat(req, res) {
                 execution_mode: 'direct_fallback'
               };
             } else {
-              // Direct execution failed or produced no results
-              aiResponse = `I'm experiencing temporary issues with my AI providers. However, I identified what you need:\n\n**${routingPlan.analysis}**\n\nRequired tools:\n${routingPlan.execution_plan?.steps?.map((step, i) => `${i + 1}. ${step.tool} - ${step.reason}`).join('\n')}\n\nUnfortunately, I cannot execute these tools at the moment. Please try again in a few moments.`;
+              throw new Error('No usable data from direct execution');
             }
-          } catch (directError) {
-            console.error('[Chat] Direct tool execution failed:', directError.message);
-            aiResponse = `I'm experiencing temporary issues with my AI providers and could not execute the requested tools. Please try again in a moment, or contact support if this persists.`;
+          } else {
+            throw new Error('Direct execution returned no results');
           }
-        } else {
-          // For other errors, try fallback to simple chat
-          console.log('[Chat] Falling back to simple chat');
+        } catch (directError) {
+          // Fall back to simple AI chat
           const defaultSystemPrompt = systemPrompt || 
             `You are a specialized blockchain operations assistant. You help with blockchain-related tasks: cryptocurrency prices, wallet operations, token/NFT deployment, smart contracts, blockchain transactions, and sending email notifications about these operations.
             
@@ -337,7 +311,6 @@ async function chat(req, res) {
       }
     } else {
       // Simple conversational response (no tools needed)
-      console.log('[Chat] Simple conversation, using direct AI');
       
       const defaultSystemPrompt = systemPrompt || 
         `You are a specialized blockchain operations assistant for BlockOps on OneChain (a Move-based blockchain). You help with: cryptocurrency prices, OCT wallet operations, Move token/NFT deployment, smart contracts, blockchain transactions, and email notifications.
@@ -366,11 +339,8 @@ async function chat(req, res) {
         });
 
       if (aiMsgError) {
-        console.error('Error saving AI message:', aiMsgError);
         // Don't throw - we already have the response
       }
-    } else {
-      console.log('[Chat] AI response generated (not persisted - Supabase not configured)');
     }
 
     // Return response
@@ -385,7 +355,6 @@ async function chat(req, res) {
     });
 
   } catch (error) {
-    console.error('[Chat] Error:', error);
     res.status(500).json({ 
       error: error.message || 'Failed to process message' 
     });
@@ -426,7 +395,6 @@ async function listConversations(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error listing conversations:', error);
       throw new Error('Failed to list conversations');
     }
 
@@ -436,7 +404,6 @@ async function listConversations(req, res) {
     });
 
   } catch (error) {
-    console.error('[List Conversations] Error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -464,7 +431,6 @@ async function getMessages(req, res) {
       .limit(parseInt(limit));
 
     if (error) {
-      console.error('Error getting messages:', error);
       throw new Error('Failed to get messages');
     }
 
@@ -474,7 +440,6 @@ async function getMessages(req, res) {
     });
 
   } catch (error) {
-    console.error('[Get Messages] Error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -509,7 +474,6 @@ async function getConversation(req, res) {
     res.json({ conversation: data });
 
   } catch (error) {
-    console.error('[Get Conversation] Error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -534,7 +498,6 @@ async function deleteConversation(req, res) {
       .eq('id', conversationId);
 
     if (error) {
-      console.error('Error deleting conversation:', error);
       throw new Error('Failed to delete conversation');
     }
 
@@ -544,7 +507,6 @@ async function deleteConversation(req, res) {
     });
 
   } catch (error) {
-    console.error('[Delete Conversation] Error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -576,7 +538,6 @@ async function updateConversation(req, res) {
       .single();
 
     if (error) {
-      console.error('Error updating conversation:', error);
       throw new Error('Failed to update conversation');
     }
 
@@ -586,7 +547,6 @@ async function updateConversation(req, res) {
     });
 
   } catch (error) {
-    console.error('[Update Conversation] Error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -616,14 +576,12 @@ async function getStats(req, res) {
     const { data, error } = await supabase.rpc('get_database_stats');
 
     if (error) {
-      console.error('Error getting stats:', error);
       throw new Error('Failed to get statistics');
     }
 
     res.json({ stats: data[0] || {} });
 
   } catch (error) {
-    console.error('[Get Stats] Error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -657,7 +615,6 @@ async function runCleanup(req, res) {
     });
 
     if (error) {
-      console.error('Error running cleanup:', error);
       throw new Error('Failed to run cleanup');
     }
 
@@ -670,7 +627,6 @@ async function runCleanup(req, res) {
     });
 
   } catch (error) {
-    console.error('[Cleanup] Error:', error);
     res.status(500).json({ error: error.message });
   }
 }

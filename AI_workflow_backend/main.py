@@ -78,8 +78,27 @@ AVAILABLE_TOOLS = [
     "get_balance",
     "deploy_move_token",
     "deploy_move_nft",
+    "mint_nft",
     "fetch_token_price",
-    "send_email"
+    "send_email",
+    "airdrop",
+    "swap",
+    "deposit_yield",
+    "wrap_oct",
+    "get_token_info",
+    "get_token_balance",
+    "get_nft_info",
+    "condition_check",
+    "yes_no_answer",
+    "send_webhook",
+    "create_dao",
+    "create_proposal",
+    "vote_on_proposal",
+    "get_proposal",
+    "approve_token",
+    "revoke_approval",
+    "tx_status",
+    "wallet_history"
 ]
 
 SYSTEM_PROMPT = """You are an AI that converts natural language descriptions of blockchain agent workflows into structured JSON for the OneChain blockchain (NOT Ethereum, NOT EVM, NOT ERC-20, NOT ERC-721).
@@ -89,10 +108,29 @@ ONECHAIN IS A MOVE-BASED BLOCKCHAIN. Never mention or use ERC-20, ERC-721, EVM, 
 Available tools (use EXACTLY these type names):
 - transfer: Transfer OCT or Move coins between wallets
 - get_balance: Fetch OCT balance of a wallet
-- deploy_move_token: Deploy Move fungible tokens on OneChain
-- deploy_move_nft: Deploy Move NFT collections on OneChain
-- fetch_token_price: Get the current price of any token using AI-powered search
-- send_email: Send email notifications to recipients (compose subject & body from user intent)
+- deploy_move_token: Deploy a new Move fungible token on OneChain
+- deploy_move_nft: Deploy a new Move NFT collection on OneChain
+- mint_nft: Mint an NFT from a deployed Move NFT collection
+- fetch_token_price: Get the current price of any token
+- send_email: Send email notifications to recipients
+- airdrop: Send tokens to multiple addresses at once
+- swap: Swap one token for another
+- deposit_yield: Deposit tokens to earn yield
+- wrap_oct: Wrap OCT tokens
+- get_token_info: Get information about a deployed token (name, symbol, supply)
+- get_token_balance: Get token balance for a specific wallet
+- get_nft_info: Get information about an NFT collection or specific NFT
+- condition_check: Evaluate a boolean condition (e.g. balance > 100)
+- yes_no_answer: Record a yes/no decision or governance vote
+- send_webhook: Send an HTTP POST to an external webhook URL
+- create_dao: Create an on-chain DAO with governance voting
+- create_proposal: Create a governance proposal in a DAO
+- vote_on_proposal: Cast a yes/no/abstain vote on a DAO proposal
+- get_proposal: Fetch details and vote tally of a governance proposal
+- approve_token: Grant token spending approval to a contract
+- revoke_approval: Revoke a token spending approval
+- tx_status: Check confirmation status of a transaction
+- wallet_history: Fetch recent transaction history for a wallet
 
 Your task is to analyze the user's request and create a workflow structure with:
 1. An agent node (always present, id: "agent_1")
@@ -100,7 +138,7 @@ Your task is to analyze the user's request and create a workflow structure with:
 3. Sequential connections when tools should execute in order
 4. Parallel connections when tools are independent
 
-CRITICAL: The "type" field of each tool MUST be one of: transfer, get_balance, deploy_move_token, deploy_move_nft, fetch_token_price, send_email. No other tool types are valid.
+CRITICAL: The "type" field of each tool MUST be exactly one of the tool names listed above. No other type values are valid.
 
 Rules:
 - The agent node always has id "agent_1" and type "agent"

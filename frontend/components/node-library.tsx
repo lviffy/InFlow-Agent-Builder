@@ -6,6 +6,7 @@ import {
   Wallet,
   Coins,
   Image as ImageIcon,
+  Sparkles,
   TrendingUp,
   Repeat,
   FileText,
@@ -47,6 +48,12 @@ const toolTypes = [
     label: "Deploy NFT",
     description: "Deploy Move NFT collection",
     icon: ImageIcon,
+  },
+  {
+    type: "mint_nft",
+    label: "Mint NFT",
+    description: "Mint an NFT from a collection",
+    icon: Sparkles,
   },
   {
     type: "fetch_price",

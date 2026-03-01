@@ -728,7 +728,7 @@ def execute_tool(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
                         elif 'sol' in vn or 'solana' in vn:
                             for alias in ['sol_price', 'solana_price', 'sol_price_usd', 'price_sol']:
                                 alias_map[alias] = val
-        elif 'arb' in vn or 'arbitrum' in vn or 'oct' in vn or 'onechain' in vn:
+                        elif 'arb' in vn or 'arbitrum' in vn or 'oct' in vn or 'onechain' in vn:
                             for alias in ['arb_price', 'arbitrum_price', 'arb_price_usd', 'oct_price', 'onechain_price', 'token_price', 'token_price_usd', 'price_arb', 'price_oct']:
                                 alias_map[alias] = val
                         elif 'token' in vn:
@@ -1392,14 +1392,31 @@ async def create_workflow(request: WorkflowRequest):
 Your task is to analyze the user's request and create a structured workflow with the appropriate blockchain tools.
 
 AVAILABLE TOOLS:
-- transfer: Transfer tokens (OCT or Move coins) from one address to another
+- transfer: Transfer OCT or Move coins from one address to another
 - get_balance: Get the OCT balance of a wallet address
-- deploy_move_token: Deploy a new Move fungible token module
-- deploy_move_nft: Deploy a new Move NFT collection
-- deploy_move_package: Deploy a custom Move package on OneChain
+- deploy_move_token: Deploy a new Move fungible token on OneChain
+- deploy_move_nft: Deploy a new Move NFT collection on OneChain
 - mint_nft: Mint an NFT from a deployed Move NFT collection
-- get_price: Get the current price of a token
-- airdrop: Send tokens to multiple addresses
+- fetch_token_price: Get the current price of any token
+- send_email: Send email notifications to recipients
+- airdrop: Send tokens to multiple addresses at once
+- swap: Swap one token for another
+- deposit_yield: Deposit tokens to earn yield
+- wrap_oct: Wrap OCT tokens
+- get_token_info: Get information about a deployed token (name, symbol, supply)
+- get_token_balance: Get token balance for a specific wallet
+- get_nft_info: Get information about an NFT collection or specific NFT
+- condition_check: Evaluate a boolean condition (e.g. balance > 100)
+- yes_no_answer: Record a yes/no decision or governance vote
+- send_webhook: Send an HTTP POST to an external webhook URL
+- create_dao: Create an on-chain DAO with governance voting
+- create_proposal: Create a governance proposal in a DAO
+- vote_on_proposal: Cast a yes/no/abstain vote on a DAO proposal
+- get_proposal: Fetch details and vote tally of a governance proposal
+- approve_token: Grant token spending approval to a contract
+- revoke_approval: Revoke a token spending approval
+- tx_status: Check confirmation status of a transaction
+- wallet_history: Fetch recent transaction history for a wallet
 
 RESPONSE FORMAT:
 You must respond with a valid JSON object containing:
@@ -1520,14 +1537,6 @@ Response:
                     else:
                         print(f"⚠️ Groq key {client_idx} workflow generation failed: {error_msg}")
                         if client_idx < len(groq_clients):
-                            continue
-                        else:
-                            print("All Groq keys rate limited, falling back to Gemini...")
-                            break
-                    else:
-                        # Try next key
-                        if client_idx < len(groq_clients):
-                            print(f"Error with Groq key {client_idx}, trying next...")
                             continue
                         else:
                             print("All Groq keys failed, falling back to Gemini...")
