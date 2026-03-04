@@ -1,6 +1,6 @@
-# BlockOps - Complete System Workflow Diagram
+# InFlow - Complete System Workflow Diagram
 
-This document contains comprehensive Mermaid diagrams visualizing the entire BlockOps platform architecture, data flow, and interactions.
+This document contains comprehensive Mermaid diagrams visualizing the entire InFlow platform architecture, data flow, and interactions.
 
 ---
 
@@ -670,7 +670,7 @@ graph TB
 
 ```mermaid
 mindmap
-  root((BlockOps API))
+  root((InFlow API))
     Frontend
       Supabase
         User CRUD

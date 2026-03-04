@@ -1,6 +1,6 @@
-/// BlockOps Payment Escrow on OneChain
+/// InFlow Payment Escrow on OneChain
 ///
-/// Accepts OCT payments and holds them in escrow until the BlockOps backend
+/// Accepts OCT payments and holds them in escrow until the InFlow backend
 /// confirms a tool execution, after which funds are released to the provider.
 /// Users can request a refund before execution if they change their mind.
 module payment_escrow::escrow;

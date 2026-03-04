@@ -33,9 +33,9 @@ At least **one** provider (Groq or Gemini) must be configured. The service uses 
 1. Go to [console.groq.com](https://console.groq.com)
 2. Sign up or log in
 3. Navigate to **API Keys** in the left sidebar
-4. Click **Create API Key**, give it a name (e.g. `blockops-1`)
+4. Click **Create API Key**, give it a name (e.g. `inflow-1`)
 5. Copy the key — it is only shown once
-6. Repeat steps 4–5 to create additional keys (`blockops-2`, `blockops-3`) for rate-limit resilience
+6. Repeat steps 4–5 to create additional keys (`inflow-2`, `inflow-3`) for rate-limit resilience
 
 > **Free tier:** Groq offers a generous free tier with per-minute and per-day token limits. Multiple keys created under the same account share the same quota — for higher limits, create keys under separate accounts or upgrade to a paid plan.
 
@@ -75,9 +75,9 @@ Alternatively via Google Cloud Console:
 |---|---|
 | Required | No (defaults to `http://localhost:3000`) |
 | Format | Full URL with protocol, no trailing slash |
-| Example | `http://localhost:3000` or `https://api.blockops.example.com` |
+| Example | `http://localhost:3000` or `https://api.inflow.example.com` |
 
-**What it does:** The URL of the main BlockOps Node.js backend. The AI agent calls this service to execute on-chain actions (transfers, deployments, balance checks, etc.) after the LLM determines what tools to invoke. All tool calls are proxied through this URL.
+**What it does:** The URL of the main InFlow Node.js backend. The AI agent calls this service to execute on-chain actions (transfers, deployments, balance checks, etc.) after the LLM determines what tools to invoke. All tool calls are proxied through this URL.
 
 **How to set it:**
 

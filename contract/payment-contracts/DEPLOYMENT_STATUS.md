@@ -9,7 +9,7 @@
 
 ✅ **Deployment Script Ready**
    - Location: `contract/payment-contracts/scripts/deploy.js`
-   - Deploys to BlockOps testnet
+   - Deploys to InFlow testnet
    - Sets up USDC token support
 
 ✅ **Test Suite Created**

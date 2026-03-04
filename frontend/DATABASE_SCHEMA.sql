@@ -1,5 +1,5 @@
 -- ============================================
--- BlockOps Complete Database Schema
+-- InFlow Complete Database Schema
 -- Supabase PostgreSQL Database
 -- ============================================
 

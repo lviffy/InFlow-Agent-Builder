@@ -1,6 +1,6 @@
 # Payment Escrow Smart Contracts
 
-This directory contains the x402 payment gating smart contracts for BlockOps platform.
+This directory contains the x402 payment gating smart contracts for InFlow platform.
 
 ## 📁 Structure
 

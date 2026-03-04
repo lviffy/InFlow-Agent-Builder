@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Script to start all BlockOps services
+# Script to start all InFlow services
 set -e
 
 BASE_DIR="/home/lviffy/Projects/onehack/blockops"
 
-echo "🚀 Starting BlockOps Services..."
+echo "🚀 Starting InFlow Services..."
 
 # ─── Clean DLT caches and unwanted files ────────────────────────────────────
 echo "🧹 Cleaning caches and unwanted files..."

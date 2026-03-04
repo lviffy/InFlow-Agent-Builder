@@ -1,5 +1,5 @@
 -- ============================================================
--- BlockOps — Complete Supabase Migration
+-- InFlow — Complete Supabase Migration
 -- Run this once in: Supabase Dashboard → SQL Editor → New query
 -- ============================================================
 

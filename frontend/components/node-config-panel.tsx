@@ -43,7 +43,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
   const [webhookPayload, setWebhookPayload] = useState(
     (node.data.config as any)?.payload
       ? JSON.stringify((node.data.config as any).payload, null, 2)
-      : '{\n  "event": "blockops_trigger"\n}'
+      : '{\n  "event": "inflow_trigger"\n}'
   )
   const [webhookMethod, setWebhookMethod] = useState((node.data.config as any)?.method || "POST")
   const [webhookSecret, setWebhookSecret] = useState((node.data.config as any)?.secret || "")
@@ -542,7 +542,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
             <Label htmlFor="wh-payload" className="text-xs font-medium">Payload (JSON)</Label>
             <Textarea
               id="wh-payload"
-              placeholder={'{\n  "event": "blockops_trigger"\n}'}
+              placeholder={'{\n  "event": "inflow_trigger"\n}'}
               value={webhookPayload}
               onChange={(e) => {
                 setWebhookPayload(e.target.value)

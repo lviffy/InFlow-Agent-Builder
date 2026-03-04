@@ -91,7 +91,7 @@ app.use((error, req, res, next) => {
 // Start server
 const server = app.listen(PORT, () => {
   console.log('\n' + '='.repeat(50));
-  console.log('🚀 BlockOps Backend Server — OneChain');
+  console.log('🚀 InFlow Backend Server — OneChain');
   console.log('='.repeat(50));
   console.log(`📡 Port: ${PORT}`);
   console.log(`🌐 Network: ${NETWORK_NAME} (${ACTIVE_NETWORK})`);

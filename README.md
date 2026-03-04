@@ -1,8 +1,8 @@
-# BlockOps
+# InFlow
 
 ## Introduction
 
-**BlockOps** is a no-code AI-powered platform that enables users to build, deploy, and interact with blockchain agents on **OneChain** (OCT-native Move-based chain). The platform combines a visual drag-and-drop workflow builder with AI-powered natural language processing, allowing users to create sophisticated blockchain automation workflows without writing any code.
+**InFlow** is a no-code AI-powered platform that enables users to build, deploy, and interact with blockchain agents on **OneChain** (OCT-native Move-based chain). The platform combines a visual drag-and-drop workflow builder with AI-powered natural language processing, allowing users to create sophisticated blockchain automation workflows without writing any code.
 
 The platform supports blockchain operations including **Move token deployment, NFT collection deployment, token transfers, and more**. All operations are powered by OneChain Move smart contracts and integrated with Gemini 2.0 Flash AI for intelligent agent interactions.
 
@@ -27,7 +27,7 @@ The platform supports blockchain operations including **Move token deployment, N
 
 ## How to Use
 
-Getting started with BlockOps is simple! Follow these steps:
+Getting started with InFlow is simple! Follow these steps:
 
 1. **Visit** [https://blockops.vercel.app/](https://blockops.vercel.app/)
 2. **Sign In** by connecting your OneWallet (via the Connect button)
@@ -57,7 +57,7 @@ Getting started with BlockOps is simple! Follow these steps:
 
 7. **Execute Blockchain Actions** seamlessly on OneChain (testnet or mainnet)
 
-That's it! You've created your first BlockOps agent without writing a single line of code!
+That's it! You've created your first InFlow agent without writing a single line of code!
 
 ---
 

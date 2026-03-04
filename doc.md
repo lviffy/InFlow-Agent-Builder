@@ -1,14 +1,14 @@
-# BlockOps
+# InFlow
 
 > **Build blockchain agents without writing a single line of code.**
 
-BlockOps is a no-code, AI-powered platform for building, deploying, and interacting with blockchain agents on **OneChain**. It bridges the gap between complex on-chain operations and everyday users by combining a visual drag-and-drop workflow builder with **Gemini 2.0 Flash AI** — so anyone can automate blockchain tasks through natural language or a visual canvas.
+InFlow is a no-code, AI-powered platform for building, deploying, and interacting with blockchain agents on **OneChain**. It bridges the gap between complex on-chain operations and everyday users by combining a visual drag-and-drop workflow builder with **Gemini 2.0 Flash AI** — so anyone can automate blockchain tasks through natural language or a visual canvas.
 
 ---
 
 ## What It Does
 
-BlockOps lets users create sophisticated blockchain automation workflows in minutes. Whether you want to deploy a token, launch an NFT collection, publish a Move package on OneChain, or orchestrate multi-step on-chain transactions, BlockOps handles the complexity under the hood.
+InFlow lets users create sophisticated blockchain automation workflows in minutes. Whether you want to deploy a token, launch an NFT collection, publish a Move package on OneChain, or orchestrate multi-step on-chain transactions, InFlow handles the complexity under the hood.
 
 ---
 
@@ -105,7 +105,7 @@ Once built, agents can be interacted with via a **chat interface** or called pro
 
 ### Intelligent Tool Routing
 
-Under the hood, BlockOps uses an **AI-powered tool routing system** that:
+Under the hood, InFlow uses an **AI-powered tool routing system** that:
 
 1. **Analyzes** your natural language message to determine intent
 2. **Plans execution** — decides which tools to call, in what order (sequential or parallel), and extracts parameters automatically
@@ -126,7 +126,7 @@ All AI operations use a cascading fallback pattern for reliability:
 
 ## Technical Architecture
 
-BlockOps is a full-stack application composed of five services:
+InFlow is a full-stack application composed of five services:
 
 | Layer | Technology | Port |
 |---|---|---|

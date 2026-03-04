@@ -1,4 +1,4 @@
-/// BlockOps NFT Factory on OneChain
+/// InFlow NFT Factory on OneChain
 ///
 /// A shared factory that mints NFT collections on behalf of users.
 /// Each NFT is a Move object with metadata and follows the OneChain

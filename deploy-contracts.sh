@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# BlockOps — OneChain Move Contract Deployment Script
+# InFlow — OneChain Move Contract Deployment Script
 # Deploys: token_factory_move, nft_factory_move, payment_escrow_move
 # ============================================================
 
@@ -193,7 +193,7 @@ update_env() {
 main() {
   echo ""
   echo -e "${CYAN}╔══════════════════════════════════════════════════╗${NC}"
-  echo -e "${CYAN}║   BlockOps — OneChain Contract Deployment        ║${NC}"
+  echo -e "${CYAN}║   InFlow — OneChain Contract Deployment        ║${NC}"
   echo -e "${CYAN}╚══════════════════════════════════════════════════╝${NC}"
   echo ""
 

@@ -1,6 +1,6 @@
 -- ============================================
 -- x402 Payment System Database Schema
--- Extends BlockOps database for payment gating
+-- Extends InFlow database for payment gating
 -- ============================================
 
 -- ============================================

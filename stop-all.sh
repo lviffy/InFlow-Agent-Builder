@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Script to stop all BlockOps services
+# Script to stop all InFlow services
 set -e
 
 BASE_DIR="/home/lviffy/Projects/onehack/blockops"
 
-echo "🛑 Stopping BlockOps Services..."
+echo "🛑 Stopping InFlow Services..."
 
 # Stop Docker containers for AI_workflow_backend
 echo "🐳 Stopping AI_workflow_backend..."

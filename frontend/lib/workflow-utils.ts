@@ -55,6 +55,13 @@ const getDefaultLabel = (type: string): string => {
     create_proposal: "Create Proposal",
     vote_on_proposal: "Vote",
     get_proposal: "Get Proposal",
+    mint_nft: "Mint NFT",
+    get_swap_quote: "Swap Quote",
+    swap_tokens: "Swap Tokens",
+    get_dex_pools: "DEX Pools",
+    get_dex_price: "DEX Price",
+    cross_border_transfer: "Cross-Border Transfer",
+    check_oneid: "Check ONEID",
   }
   return labels[type] || "Tool"
 }
@@ -83,6 +90,13 @@ const getDefaultDescription = (type: string): string => {
     create_proposal: "Submit a governance proposal",
     vote_on_proposal: "Cast a yes/no/abstain vote",
     get_proposal: "Fetch proposal details & tally",
+    mint_nft: "Mint an NFT from a collection",
+    get_swap_quote: "Get ONEDEX quote without trading",
+    swap_tokens: "Execute swap on ONEDEX",
+    get_dex_pools: "List ONEDEX liquidity pools",
+    get_dex_price: "Get on-chain token price",
+    cross_border_transfer: "ONETRANSFER international payment",
+    check_oneid: "Verify wallet ONEID / KYC status",
   }
   return descriptions[type] || "Workflow tool"
 }

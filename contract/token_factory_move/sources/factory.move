@@ -1,6 +1,6 @@
-/// BlockOps Token Factory on OneChain
+/// InFlow Token Factory on OneChain
 ///
-/// A shared factory that lets the BlockOps backend create and manage
+/// A shared factory that lets the InFlow backend create and manage
 /// fungible tokens on behalf of users.  Each token type is tracked inside
 /// the factory via dynamic fields, and individual balances live as owned
 /// `Token` objects in users' wallets.
@@ -255,7 +255,7 @@ fun test_create_and_mint() {
         let mut factory = scenario.take_shared<TokenFactory>();
         let (token, cap) = create_token(
             &mut factory,
-            b"BlockOps Coin",
+            b"InFlow Coin",
             b"BOPS",
             9,
             1_000_000_000,

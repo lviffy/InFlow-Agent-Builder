@@ -49,8 +49,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BlockOps Agent Builder",
-  description: "Build your own BlockOps agents with ease.",
+  title: "InFlow Agent Builder",
+  description: "Build your own InFlow agents with ease.",
   icons: {
     icon: "/logo.jpeg",
   },

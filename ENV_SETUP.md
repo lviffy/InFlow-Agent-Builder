@@ -1,4 +1,4 @@
-# BlockOps — Environment Variables Setup Guide
+# InFlow — Environment Variables Setup Guide
 
 Complete reference for every environment variable used across all services. Copy each folder's `.env.example` (or `.env.local.example` for the frontend) to `.env` / `.env.local` and fill in the values below.
 
@@ -217,7 +217,7 @@ cp frontend/.env.local.example frontend/.env.local
 
 | Variable | Default | Description |
 |---|---|---|
-| `NEXT_PUBLIC_BACKEND_URL` | `http://localhost:3000` | Main BlockOps Node.js backend |
+| `NEXT_PUBLIC_BACKEND_URL` | `http://localhost:3000` | Main InFlow Node.js backend |
 | `NEXT_PUBLIC_BLOCKCHAIN_BACKEND_URL` | `http://localhost:3000` | Alias used by blockchain-specific libs |
 | `NEXT_PUBLIC_AI_AGENT_BACKEND_URL` | `http://localhost:8000` | n8n agent backend (AI execution) |
 | `NEXT_PUBLIC_AI_WORKFLOW_BACKEND_URL` | `http://localhost:8001` | AI workflow builder |
@@ -318,7 +318,7 @@ Move package deployer AI. Copy `orbit_ai_backend/.env.example` → `orbit_ai_bac
 ### Groq
 
 1. Go to [console.groq.com](https://console.groq.com) and sign in
-2. **API Keys → Create API Key** — give it a name (e.g. `blockops-1`)
+2. **API Keys → Create API Key** — give it a name (e.g. `inflow-1`)
 3. Copy the key immediately (shown only once, starts with `gsk_`)
 4. Repeat to create additional keys for rate-limit resilience
 
@@ -348,7 +348,7 @@ Or via Google Cloud Console: enable **Generative Language API** → **APIs & Ser
 
 1. The Gmail account must have 2-Step Verification enabled
 2. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. **Select app: Mail** / **Select device: Other** → enter `BlockOps` → **Generate**
+3. **Select app: Mail** / **Select device: Other** → enter `InFlow` → **Generate**
 4. Copy the 16-character password
 
 ### OneChain Faucet (Testnet OCT)

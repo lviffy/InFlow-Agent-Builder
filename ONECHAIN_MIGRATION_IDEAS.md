@@ -1,4 +1,4 @@
-# BlockOps → OneChain Migration Ideas & Implementation Guide
+# InFlow → OneChain Migration Ideas & Implementation Guide
 
 > **Current Stack**: Arbitrum Sepolia (EVM) + Solidity/Stylus + ethers.js  
 > **Target Stack**: OneChain (Move-based) + Move smart contracts + OneChain TypeScript/Rust SDK  
@@ -423,7 +423,7 @@ These are brand-new features that leverage OneChain's native ecosystem.
 
 ### 6.1 OneTransfer Integration
 
-Use **OneTransfer** (native cross-chain transfer) in BlockOps' transfer UI.
+Use **OneTransfer** (native cross-chain transfer) in InFlow' transfer UI.
 
 - Add a "OneTransfer" option in the transfer controller
 - UI: Transfer tokens across chains using OneTransfer protocol
@@ -435,7 +435,7 @@ Integrate **OneDEX** (native DEX on OneChain) for token swaps.
 
 - New feature: AI-powered swap suggestions ("Swap X OCT for Y tokens")
 - NL Executor command: "Swap 10 OCT for GameCoin on OneDEX"
-- Move call to OneDEX package from the BlockOps backend
+- Move call to OneDEX package from the InFlow backend
 
 ```js
 // New backend/controllers/dexController.js
@@ -511,7 +511,7 @@ await fetch('https://faucet-testnet.onelabs.cc/v1/gas', {
 
 Add **Real World Asset** tokenization feature using OneRWA.
 
-- New section in BlockOps: "Tokenize Real Assets"  
+- New section in InFlow: "Tokenize Real Assets"  
 - Create RWA tokens representing real-world assets  
 - Deploy on OneChain via OneRWA protocol
 

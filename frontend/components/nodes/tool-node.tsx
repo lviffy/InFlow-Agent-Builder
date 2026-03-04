@@ -26,6 +26,12 @@ import {
   ScrollText,
   Vote,
   ClipboardList,
+  ArrowUpDown,
+  Shuffle,
+  LayoutGrid,
+  BarChart2,
+  Globe,
+  ShieldCheck,
 } from "lucide-react"
 import type { NodeData } from "@/lib/types"
 
@@ -53,6 +59,12 @@ const toolIcons: Record<string, React.ReactNode> = {
   create_proposal: <ScrollText className="h-4 w-4" />,
   vote_on_proposal: <Vote className="h-4 w-4" />,
   get_proposal: <ClipboardList className="h-4 w-4" />,
+  get_swap_quote: <ArrowUpDown className="h-4 w-4" />,
+  swap_tokens: <Shuffle className="h-4 w-4" />,
+  get_dex_pools: <LayoutGrid className="h-4 w-4" />,
+  get_dex_price: <BarChart2 className="h-4 w-4" />,
+  cross_border_transfer: <Globe className="h-4 w-4" />,
+  check_oneid: <ShieldCheck className="h-4 w-4" />,
 }
 
 const toolColors: Record<string, { border: string; bg: string; text: string }> = {
@@ -79,6 +91,12 @@ const toolColors: Record<string, { border: string; bg: string; text: string }> =
   create_proposal: { border: "border-foreground/50", bg: "bg-foreground/10", text: "text-foreground" },
   vote_on_proposal: { border: "border-foreground/60", bg: "bg-foreground/15", text: "text-foreground" },
   get_proposal: { border: "border-foreground/40", bg: "bg-foreground/5", text: "text-foreground" },
+  get_swap_quote: { border: "border-foreground/50", bg: "bg-foreground/10", text: "text-foreground" },
+  swap_tokens: { border: "border-foreground/60", bg: "bg-foreground/15", text: "text-foreground" },
+  get_dex_pools: { border: "border-foreground/40", bg: "bg-foreground/5", text: "text-foreground" },
+  get_dex_price: { border: "border-foreground/50", bg: "bg-foreground/10", text: "text-foreground" },
+  cross_border_transfer: { border: "border-foreground/60", bg: "bg-foreground/15", text: "text-foreground" },
+  check_oneid: { border: "border-foreground/40", bg: "bg-foreground/5", text: "text-foreground" },
 }
 
 export const ToolNode = memo(({ data, type, isConnectable }: NodeProps<NodeData>) => {
