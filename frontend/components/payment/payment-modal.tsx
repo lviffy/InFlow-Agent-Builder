@@ -133,7 +133,7 @@ export default function PaymentModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="rounded-lg border bg-slate-50 dark:bg-slate-900 p-4">
+          <div className="rounded-lg border bg-muted/50 dark:bg-muted/20 p-4">
             <h3 className="font-semibold text-lg mb-1">{toolDisplayName}</h3>
             {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
             <div className="flex items-baseline gap-1">
@@ -146,7 +146,7 @@ export default function PaymentModal({
             <div className={`rounded-lg p-4 ${
               hasError ? "bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200"
               : isComplete ? "bg-green-50 dark:bg-green-900/20 text-green-900 dark:text-green-200"
-              : "bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-200"
+              : "bg-secondary/20 dark:bg-secondary/20 text-accent-foreground dark:text-foreground"
             }`}>
               <div className="flex items-center gap-3">
                 {isProcessing && <Loader2 className="h-5 w-5 animate-spin" />}
@@ -159,7 +159,7 @@ export default function PaymentModal({
 
           {txHash && (
             <a href={getTxExplorerUrl(txHash)} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400">
+              className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 dark:text-secondary">
               View transaction on OneChain Explorer
               <ExternalLink className="h-4 w-4" />
             </a>

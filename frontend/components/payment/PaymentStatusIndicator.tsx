@@ -110,7 +110,7 @@ export function PaymentStatusIndicator({
           icon: CheckCircle2,
           label: "Confirmed",
           variant: "default" as const,
-          color: "text-blue-500",
+          color: "text-primary",
           description: "Payment confirmed, waiting for service execution",
         }
       case "executed":
@@ -273,7 +273,7 @@ export function PaymentStatusIcon({ status }: { status: PaymentStatus }) {
       case "pending":
         return <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />
       case "confirmed":
-        return <CheckCircle2 className="h-4 w-4 text-blue-500" />
+        return <CheckCircle2 className="h-4 w-4 text-primary" />
       case "executed":
         return <CheckCircle2 className="h-4 w-4 text-green-500" />
       case "refunded":

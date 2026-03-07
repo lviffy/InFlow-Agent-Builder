@@ -98,7 +98,7 @@ export default function ToolPricingBadge({
       } ${
         pricing.isFree
           ? "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300"
-          : "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+          : "bg-secondary/20 dark:bg-secondary/20 text-accent-foreground dark:text-foreground"
       } ${onClick ? "cursor-pointer hover:scale-105" : ""} ${className}`}
       onClick={onClick}
     >
@@ -139,7 +139,7 @@ export default function ToolPricingBadge({
                 </span>
               ) : (
                 <>
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                  <span className="text-primary dark:text-secondary font-medium">
                     💳 ${pricing.price.toFixed(2)} USDC
                   </span>
                   <span className="text-muted-foreground">per use</span>
@@ -196,7 +196,7 @@ export function ToolPricingInline({
       {pricing.isFree ? (
         <span className="text-green-600 dark:text-green-400">FREE</span>
       ) : (
-        <span className="text-blue-600 dark:text-blue-400">
+        <span className="text-primary dark:text-secondary">
           ${pricing.price.toFixed(2)}
         </span>
       )}

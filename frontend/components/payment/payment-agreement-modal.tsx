@@ -79,7 +79,7 @@ export default function PaymentAgreementModal({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Shield className="h-6 w-6 text-blue-600" />
+            <Shield className="h-6 w-6 text-primary" />
             Payment Terms & Agreement
           </DialogTitle>
           <DialogDescription>
@@ -221,13 +221,13 @@ export default function PaymentAgreementModal({
             </section>
 
             <section className="pt-4 border-t">
-              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 p-3 bg-secondary/20 dark:bg-secondary/20 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <p className="font-medium text-blue-900 dark:text-blue-200">
+                  <p className="font-medium text-accent-foreground dark:text-foreground">
                     Important Notice
                   </p>
-                  <p className="text-blue-800 dark:text-blue-300 mt-1">
+                  <p className="text-muted-foreground dark:text-muted-foreground mt-1">
                     By accepting these terms, you acknowledge that you have read,
                     understood, and agree to be bound by them. This agreement will
                     be recorded with your user ID, IP address, and timestamp for

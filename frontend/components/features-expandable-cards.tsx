@@ -61,7 +61,7 @@ export default function FeaturesExpandableCards() {
                   duration: 0.05,
                 },
               }}
-              className="flex absolute top-2 right-2 lg:hidden items-center justify-center bg-white rounded-full h-6 w-6"
+              className="flex absolute top-2 right-2 lg:hidden items-center justify-center bg-card rounded-full h-6 w-6"
               onClick={() => setActive(null)}
             >
               <CloseIcon />
@@ -69,26 +69,26 @@ export default function FeaturesExpandableCards() {
             <motion.div
               layoutId={`card-${active.title}-${id}`}
               ref={ref}
-              className="w-full max-w-[500px] h-full md:h-fit md:max-h-[90%] flex flex-col bg-white dark:bg-neutral-900 sm:rounded-xl overflow-hidden shadow-2xl"
+              className="w-full max-w-[500px] h-full md:h-fit md:max-h-[90%] flex flex-col bg-card sm:rounded-xl overflow-hidden shadow-2xl"
             >
               <div className="p-8">
                 <div className="flex items-center gap-4 mb-6">
                   <motion.div
                     layoutId={`icon-${active.title}-${id}`}
-                    className="w-16 h-16 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0"
+                    className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center flex-shrink-0"
                   >
                     {active.icon}
                   </motion.div>
                   <div>
                     <motion.h3
                       layoutId={`title-${active.title}-${id}`}
-                      className="font-bold text-2xl text-slate-900"
+                      className="font-bold text-2xl text-card-foreground"
                     >
                       {active.title}
                     </motion.h3>
                     <motion.p
                       layoutId={`description-${active.description}-${id}`}
-                      className="text-slate-600"
+                      className="text-muted-foreground"
                     >
                       {active.description}
                     </motion.p>
@@ -101,7 +101,7 @@ export default function FeaturesExpandableCards() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="text-slate-600 text-sm leading-relaxed space-y-4 max-h-[60vh] overflow-auto pr-2"
+                    className="text-muted-foreground text-sm leading-relaxed space-y-4 max-h-[60vh] overflow-auto pr-2"
                   >
                     {typeof active.content === "function"
                       ? active.content()
@@ -119,24 +119,24 @@ export default function FeaturesExpandableCards() {
             layoutId={`card-${card.title}-${id}`}
             key={`card-${card.title}-${id}`}
             onClick={() => setActive(card)}
-            className="group relative bg-white p-6 sm:p-8 lg:p-10 rounded-xl border border-slate-200 cursor-pointer"
+            className="group relative bg-card p-6 sm:p-8 lg:p-10 rounded-xl border border-border cursor-pointer"
           >
             <div className="relative z-10">
               <motion.div
                 layoutId={`icon-${card.title}-${id}`}
-                className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-slate-900 rounded-lg flex items-center justify-center mb-4 sm:mb-6 lg:mb-8"
+                className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-primary rounded-lg flex items-center justify-center mb-4 sm:mb-6 lg:mb-8"
               >
                 {card.icon}
               </motion.div>
               <motion.h3
                 layoutId={`title-${card.title}-${id}`}
-                className="text-lg sm:text-xl font-bold text-slate-900 mb-2 sm:mb-3"
+                className="text-lg sm:text-xl font-bold text-card-foreground mb-2 sm:mb-3"
               >
                 {card.title}
               </motion.h3>
               <motion.p
                 layoutId={`description-${card.description}-${id}`}
-                className="text-slate-600 text-sm sm:text-base leading-relaxed"
+                className="text-muted-foreground text-sm sm:text-base leading-relaxed"
               >
                 {card.description}
               </motion.p>
@@ -172,7 +172,7 @@ export const CloseIcon = () => {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="h-4 w-4 text-black"
+      className="h-4 w-4 text-foreground"
     >
       <path stroke="none" d="M0 0h24v24H0z" fill="none" />
       <path d="M18 6l-12 12" />
@@ -185,30 +185,30 @@ const cards = [
   {
     title: "Visual Workflow Builder",
     description: "Drag-and-drop interface for complex automation",
-    icon: <Workflow className="w-7 h-7 text-white" />,
+    icon: <Workflow className="w-7 h-7 text-primary-foreground" />,
     content: () => {
       return (
         <div className="space-y-4">
           <p>
             Our Visual Workflow Builder revolutionizes how you create blockchain automation. With an intuitive drag-and-drop interface, you can design complex workflows without writing a single line of code.
           </p>
-          <div className="bg-slate-50 rounded-lg p-4">
-            <h4 className="font-semibold text-slate-900 mb-2">Key Features:</h4>
+          <div className="bg-muted rounded-lg p-4">
+            <h4 className="font-semibold text-foreground mb-2">Key Features:</h4>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Pre-built templates for common blockchain operations</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Real-time validation and error checking</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Custom node creation for specialized tasks</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Version control and workflow history</span>
               </li>
             </ul>
@@ -223,30 +223,30 @@ const cards = [
   {
     title: "Secure Wallet Integration",
     description: "Connect Web3 wallets and execute transactions",
-    icon: <Wallet className="w-7 h-7 text-white" />,
+    icon: <Wallet className="w-7 h-7 text-primary-foreground" />,
     content: () => {
       return (
         <div className="space-y-4">
           <p>
             Connect your Web3 wallet securely with enterprise-grade encryption. Execute transactions directly from your agents with full control and transparency.
           </p>
-          <div className="bg-slate-50 rounded-lg p-4">
-            <h4 className="font-semibold text-slate-900 mb-2">Security Features:</h4>
+          <div className="bg-muted rounded-lg p-4">
+            <h4 className="font-semibold text-foreground mb-2">Security Features:</h4>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Hardware wallet support (Ledger, Trezor)</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Multi-signature transaction support</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Transaction simulation before execution</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Automated gas optimization</span>
               </li>
             </ul>
@@ -261,30 +261,30 @@ const cards = [
   {
     title: "Smart Contract Explorer",
     description: "Test and interact with any smart contract",
-    icon: <Shield className="w-7 h-7 text-white" />,
+    icon: <Shield className="w-7 h-7 text-primary-foreground" />,
     content: () => {
       return (
         <div className="space-y-4">
           <p>
             Explore and interact with any smart contract on supported networks. Test functions, read state, and execute transactions all from one intuitive interface.
           </p>
-          <div className="bg-slate-50 rounded-lg p-4">
-            <h4 className="font-semibold text-slate-900 mb-2">Explorer Capabilities:</h4>
+          <div className="bg-muted rounded-lg p-4">
+            <h4 className="font-semibold text-foreground mb-2">Explorer Capabilities:</h4>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Automatic ABI fetching from block explorers</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Function parameter type conversion</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Read and write function categorization</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Transaction history and analytics</span>
               </li>
             </ul>
@@ -299,30 +299,30 @@ const cards = [
   {
     title: "AI-Powered Assistance",
     description: "Intelligent suggestions for blockchain interactions",
-    icon: <Sparkles className="w-7 h-7 text-white" />,
+    icon: <Sparkles className="w-7 h-7 text-primary-foreground" />,
     content: () => {
       return (
         <div className="space-y-4">
           <p>
             Leverage cutting-edge AI to automate complex blockchain interactions. Get intelligent suggestions, optimize your workflows, and reduce errors with machine learning-powered assistance.
           </p>
-          <div className="bg-slate-50 rounded-lg p-4">
-            <h4 className="font-semibold text-slate-900 mb-2">AI Features:</h4>
+          <div className="bg-muted rounded-lg p-4">
+            <h4 className="font-semibold text-foreground mb-2">AI Features:</h4>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Natural language to workflow conversion</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Smart contract interaction suggestions</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Anomaly detection and security alerts</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Workflow optimization recommendations</span>
               </li>
             </ul>
@@ -337,30 +337,30 @@ const cards = [
   {
     title: "Real-time Monitoring",
     description: "Track performance with instant notifications",
-    icon: <Activity className="w-7 h-7 text-white" />,
+    icon: <Activity className="w-7 h-7 text-primary-foreground" />,
     content: () => {
       return (
         <div className="space-y-4">
           <p>
             Monitor your agents' performance in real-time with comprehensive analytics and instant notifications. Never miss an important event or transaction.
           </p>
-          <div className="bg-slate-50 rounded-lg p-4">
-            <h4 className="font-semibold text-slate-900 mb-2">Monitoring Tools:</h4>
+          <div className="bg-muted rounded-lg p-4">
+            <h4 className="font-semibold text-foreground mb-2">Monitoring Tools:</h4>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Real-time dashboard with live updates</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Custom alerts and notifications</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Performance metrics and analytics</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Error tracking and debugging tools</span>
               </li>
             </ul>
@@ -375,30 +375,30 @@ const cards = [
   {
     title: "Multi-Chain Support",
     description: "Deploy agents across multiple blockchains",
-    icon: <Network className="w-7 h-7 text-white" />,
+    icon: <Network className="w-7 h-7 text-primary-foreground" />,
     content: () => {
       return (
         <div className="space-y-4">
           <p>
             Deploy your agents across multiple blockchain networks with seamless integration. Support for all major EVM-compatible chains and beyond.
           </p>
-          <div className="bg-slate-50 rounded-lg p-4">
-            <h4 className="font-semibold text-slate-900 mb-2">Supported Networks:</h4>
+          <div className="bg-muted rounded-lg p-4">
+            <h4 className="font-semibold text-foreground mb-2">Supported Networks:</h4>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>OneChain (Move VM), Sui</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>OneChain Testnet, Mainnet, Devnet</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Custom RPC endpoint support</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-slate-900">•</span>
+                <span className="text-primary">•</span>
                 <span>Cross-chain transaction orchestration</span>
               </li>
             </ul>

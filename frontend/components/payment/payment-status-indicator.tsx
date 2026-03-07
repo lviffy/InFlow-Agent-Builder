@@ -105,7 +105,7 @@ export default function PaymentStatusIndicator({
   if (loading) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
-        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
         <span className="text-sm text-muted-foreground">
           Loading payment status...
         </span>
@@ -136,8 +136,8 @@ export default function PaymentStatusIndicator({
         return {
           icon: CheckCircle,
           label: "Confirmed",
-          color: "text-blue-600 dark:text-blue-400",
-          bgColor: "bg-blue-100 dark:bg-blue-900/20",
+          color: "text-primary dark:text-secondary",
+          bgColor: "bg-secondary/20 dark:bg-secondary/20",
           description: "Payment confirmed, ready for execution",
         };
       case "executed":
@@ -267,7 +267,7 @@ export default function PaymentStatusIndicator({
           href={`${EXPLORER_URL}/tx/${paymentHash}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 dark:text-secondary dark:hover:text-secondary/80"
         >
           View on Arbiscan
           <ExternalLink className="h-3 w-3" />
@@ -311,8 +311,8 @@ export function PaymentStatusBadge({
         return {
           icon: CheckCircle,
           label: "Confirmed",
-          color: "text-blue-700 dark:text-blue-300",
-          bgColor: "bg-blue-100 dark:bg-blue-900/20",
+          color: "text-accent-foreground dark:text-foreground",
+          bgColor: "bg-secondary/20 dark:bg-secondary/20",
         };
       case "executed":
         return {

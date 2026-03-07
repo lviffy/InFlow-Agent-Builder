@@ -45,7 +45,7 @@ export default function ApiDocs() {
             <h2 className="text-2xl font-bold">Getting Started</h2>
             <p className="text-muted-foreground">
               To use your InFlow agent via API, you'll need your agent's API key. 
-              You can find this by going to <Link href="/my-agents" className="text-blue-500 hover:underline">My Agents</Link>, 
+              You can find this by going to <Link href="/my-agents" className="text-primary hover:underline">My Agents</Link>, 
               clicking on an agent, and selecting "Export".
             </p>
           </section>

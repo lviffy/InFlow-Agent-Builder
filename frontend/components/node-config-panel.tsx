@@ -462,7 +462,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
           )}
 
           {/* AI hint */}
-          <div className="p-2 rounded-md bg-blue-50 border border-blue-200 text-[10px] text-blue-700">
+          <div className="p-2 rounded-md bg-muted border border-border text-[10px] text-accent-foreground">
             💡 Tip: You can also ask the AI chatbot to compose and send emails for you. Just say something like &quot;Send an email to alice@example.com about the token deployment.&quot;
           </div>
         </div>
@@ -588,7 +588,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
             </div>
           )}
 
-          <div className="p-2 rounded-md bg-blue-50 border border-blue-200 text-[10px] text-blue-700">
+          <div className="p-2 rounded-md bg-muted border border-border text-[10px] text-accent-foreground">
             💡 Tip: Use this node at the end of a workflow to notify external services (n8n, Slack, custom APIs) when your blockchain task completes.
           </div>
         </div>
@@ -691,7 +691,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
             </div>
           )}
 
-          <div className="p-2 rounded-md bg-blue-50 border border-blue-200 text-[10px] text-blue-700">
+          <div className="p-2 rounded-md bg-muted border border-border text-[10px] text-accent-foreground">
             💡 Use this node to gate later steps — connect its output to a Transfer or Email node to conditionally execute based on on-chain state. The &quot;Preview&quot; button tests your expression locally with the variables you provide.
           </div>
         </div>
@@ -787,7 +787,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
             )}
           </div>
 
-          <div className="p-2 rounded-md bg-blue-50 border border-blue-200 text-[10px] text-blue-700">
+          <div className="p-2 rounded-md bg-muted border border-border text-[10px] text-accent-foreground">
             💡 Use this node for governance approval gates, manual override steps, or any binary decision point in your workflow.
           </div>
         </div>
@@ -853,7 +853,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
               <span className="break-all">{daoResult.message}</span>
             </div>
           )}
-          <div className="p-2 rounded-md bg-blue-50 border border-blue-200 text-[10px] text-blue-700">
+          <div className="p-2 rounded-md bg-muted border border-border text-[10px] text-accent-foreground">
             💡 Once created, copy the DAO ID to use in downstream Create Proposal and Vote nodes.
           </div>
         </div>
@@ -912,7 +912,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
               <span className="break-all">{propResult.message}</span>
             </div>
           )}
-          <div className="p-2 rounded-md bg-blue-50 border border-blue-200 text-[10px] text-blue-700">
+          <div className="p-2 rounded-md bg-muted border border-border text-[10px] text-accent-foreground">
             💡 Copy the returned Proposal ID to use in Vote nodes downstream.
           </div>
         </div>
@@ -975,7 +975,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
               <span className="break-all">{voteResult.message}</span>
             </div>
           )}
-          <div className="p-2 rounded-md bg-blue-50 border border-blue-200 text-[10px] text-blue-700">
+          <div className="p-2 rounded-md bg-muted border border-border text-[10px] text-accent-foreground">
             💡 Each wallet can change their vote — submitting again replaces the previous vote.
           </div>
         </div>
@@ -1030,7 +1030,7 @@ export default function NodeConfigPanel({ node, updateNodeData, onClose }: NodeC
             </div>
           )}
 
-          <div className="p-2 rounded-md bg-blue-50 border border-blue-200 text-[10px] text-blue-700">
+          <div className="p-2 rounded-md bg-muted border border-border text-[10px] text-accent-foreground">
             💡 Use this node to query live vote tallies after a Vote node, or to check proposal status before executing downstream actions.
           </div>
         </div>

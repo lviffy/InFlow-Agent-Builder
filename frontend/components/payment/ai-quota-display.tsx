@@ -106,7 +106,7 @@ export default function AIQuotaDisplay({
                   ? "bg-red-100 dark:bg-red-900/20 text-red-900 dark:text-red-200"
                   : remaining <= 1
                   ? "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-900 dark:text-yellow-200"
-                  : "bg-blue-100 dark:bg-blue-900/20 text-blue-900 dark:text-blue-200"
+                  : "bg-secondary/20 dark:bg-secondary/20 text-accent-foreground dark:text-foreground"
               }`}
             >
               <Sparkles className="h-4 w-4" />
@@ -132,7 +132,7 @@ export default function AIQuotaDisplay({
                 ? "bg-red-500"
                 : percentage >= 66
                 ? "bg-yellow-500"
-                : "bg-blue-500"
+                : "bg-primary"
             }`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />
@@ -167,9 +167,9 @@ export default function AIQuotaDisplay({
 
         {/* Low Quota Warning */}
         {remaining === 1 && (
-          <div className="flex items-start gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-800 dark:text-blue-300">
+          <div className="flex items-start gap-2 p-2 bg-secondary/20 dark:bg-secondary/20 rounded-lg border border-border">
+            <Sparkles className="h-4 w-4 text-primary dark:text-secondary shrink-0 mt-0.5" />
+            <p className="text-xs text-accent-foreground dark:text-foreground">
               Last free generation! After this, AI generations will cost $0.25
               USDC each.
             </p>
