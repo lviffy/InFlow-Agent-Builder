@@ -3,7 +3,7 @@
 # Script to start all InFlow services
 set -e
 
-BASE_DIR="/home/lviffy/Projects/onehack/blockops"
+BASE_DIR="/home/lviffy/Projects/onehack/InFlow"
 
 echo "🚀 Starting InFlow Services..."
 

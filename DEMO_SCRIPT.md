@@ -1,4 +1,4 @@
-# BlockOps Demo Script
+# InFlow Demo Script
 
 ## Goal
 
@@ -20,7 +20,7 @@ Open the app and show the connected wallet.
 
 Voiceover:
 
-"This is BlockOps on OneChain. Every user gets a persistent on-chain identity layer for agents, including a wallet, DID, and support for ONS names. That gives AI agents a reusable identity and a better user experience from the start."
+"This is InFlow on OneChain. Every user gets a persistent on-chain identity layer for agents, including a wallet, DID, and support for ONS names. That gives AI agents a reusable identity and a better user experience from the start."
 
 Point out:
 
@@ -96,7 +96,7 @@ End on the homepage, marketplace, or chat page.
 
 Voiceover:
 
-"BlockOps turns OneChain capabilities into reusable AI agents with identity, gas sponsorship, stablecoin support, ONS resolution, GameFi templates, and a publishable marketplace. That makes OneChain easier to use, easier to build on, and easier to scale through agents."
+"InFlow turns OneChain capabilities into reusable AI agents with identity, gas sponsorship, stablecoin support, ONS resolution, GameFi templates, and a publishable marketplace. That makes OneChain easier to use, easier to build on, and easier to scale through agents."
 
 ## Recording Tips
 

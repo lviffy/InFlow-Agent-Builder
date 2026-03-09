@@ -10,7 +10,7 @@ The platform supports blockchain operations including **Move token deployment, N
 
 ## Resources
 
-* **Live Demo**: [https://blockops.vercel.app/](https://blockops.vercel.app/)
+* **Live Demo**: [https://InFlow.vercel.app/](https://InFlow.vercel.app/)
 * **Demo Video**: [Watch on Google Drive](https://drive.google.com/drive/folders/137-DEv4MkspcmfuAN-ETsxpGMqzmZeZl?usp=sharing)
 * **Payment Contract**: [View on OneChain Explorer](https://explorer-testnet.onelabs.cc)
 
@@ -29,7 +29,7 @@ The platform supports blockchain operations including **Move token deployment, N
 
 Getting started with InFlow is simple! Follow these steps:
 
-1. **Visit** [https://blockops.vercel.app/](https://blockops.vercel.app/)
+1. **Visit** [https://InFlow.vercel.app/](https://InFlow.vercel.app/)
 2. **Sign In** by connecting your OneWallet (via the Connect button)
 3. **Create or Import Agent Wallet** 
    - Create a new agent wallet (automatically generated)

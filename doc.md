@@ -166,7 +166,7 @@ Payments flow through a custom **PaymentEscrow Move module** implementing the x4
 
 | Resource | Link |
 |---|---|
-| Live App | [blockops.in](https://blockops.in) |
+| Live App | [InFlow.in](https://InFlow.in) |
 | Demo Video | [Google Drive](https://drive.google.com/drive/folders/137-DEv4MkspcmfuAN-ETsxpGMqzmZeZl?usp=sharing) |
 | Payment Contract | [OneChain Explorer](https://explorer-testnet.onelabs.cc) |
 

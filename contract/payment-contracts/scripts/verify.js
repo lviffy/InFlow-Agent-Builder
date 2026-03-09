@@ -7,7 +7,7 @@ async function main() {
   
   if (!contractAddress) {
     console.error("❌ PAYMENT_CONTRACT_ADDRESS not set in .env");
-    console.log("Deploy the contract first using: npx hardhat run scripts/deploy.js --network blockops");
+    console.log("Deploy the contract first using: npx hardhat run scripts/deploy.js --network InFlow");
     process.exit(1);
   }
   

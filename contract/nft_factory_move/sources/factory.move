@@ -252,7 +252,7 @@ fun test_create_collection_and_mint() {
             &mut factory,
             b"CryptoKnights",
             b"CKN",
-            b"https://api.blockops.xyz/ckn/",
+            b"https://api.InFlow.xyz/ckn/",
             100,
             scenario.ctx(),
         );
@@ -268,7 +268,7 @@ fun test_create_collection_and_mint() {
             &mut collection,
             b"Knight #0",
             b"The first CryptoKnight",
-            b"https://api.blockops.xyz/ckn/0.png",
+            b"https://api.InFlow.xyz/ckn/0.png",
             vector[new_attribute(b"rarity", b"legendary")],
             user,
             scenario.ctx(),

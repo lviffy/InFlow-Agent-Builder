@@ -166,7 +166,7 @@ async function sendWebhook(req, res) {
     // Build headers
     const requestHeaders = {
       'Content-Type': 'application/json',
-      'X-Webhook-Source': 'blockops',
+      'X-Webhook-Source': 'InFlow',
       'X-Sent-At': sentAt,
       ...customHeaders
     };

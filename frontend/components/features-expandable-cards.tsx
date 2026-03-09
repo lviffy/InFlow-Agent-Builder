@@ -69,7 +69,7 @@ export default function FeaturesExpandableCards() {
             <motion.div
               layoutId={`card-${active.title}-${id}`}
               ref={ref}
-              className="w-full max-w-[500px] h-full md:h-fit md:max-h-[90%] flex flex-col bg-card sm:rounded-xl overflow-hidden shadow-2xl"
+              className="w-full max-w-[500px] h-full md:h-fit md:max-h-[90%] flex flex-col bg-zinc-900 sm:rounded-xl overflow-hidden shadow-2xl"
             >
               <div className="p-8">
                 <div className="flex items-center gap-4 mb-6">
@@ -119,7 +119,7 @@ export default function FeaturesExpandableCards() {
             layoutId={`card-${card.title}-${id}`}
             key={`card-${card.title}-${id}`}
             onClick={() => setActive(card)}
-            className="group relative bg-card p-6 sm:p-8 lg:p-10 rounded-xl border border-border cursor-pointer"
+            className="group relative bg-zinc-900 p-6 sm:p-8 lg:p-10 rounded-xl cursor-pointer"
           >
             <div className="relative z-10">
               <motion.div

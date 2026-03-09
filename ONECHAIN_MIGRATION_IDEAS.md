@@ -607,7 +607,7 @@ one client switch --env testnet
 one client faucet
 
 # 4. Create a new Move package
-one move new blockops_token
+one move new InFlow_token
 
 # 5. Build and test
 one move build
