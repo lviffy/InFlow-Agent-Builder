@@ -205,15 +205,15 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
   }, {})
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#0f1115] text-neutral-100">
       {/* Tab Header */}
-      <div className="flex border-b border-neutral-200">
+      <div className="flex border-b border-neutral-800">
         <button
           onClick={() => setActiveTab("tools")}
           className={`flex-1 px-3 py-2.5 text-xs font-medium tracking-tight transition-colors ${
             activeTab === "tools"
-              ? "text-neutral-900 border-b-2 border-neutral-900 bg-white"
-              : "text-neutral-500 hover:text-neutral-700"
+              ? "text-neutral-100 border-b-2 border-neutral-500 bg-neutral-900"
+              : "text-neutral-400 hover:text-neutral-200"
           }`}
         >
           Tools
@@ -222,8 +222,8 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
           onClick={() => setActiveTab("templates")}
           className={`flex-1 px-3 py-2.5 text-xs font-medium tracking-tight transition-colors flex items-center justify-center gap-1.5 ${
             activeTab === "templates"
-              ? "text-neutral-900 border-b-2 border-neutral-900 bg-white"
-              : "text-neutral-500 hover:text-neutral-700"
+              ? "text-neutral-100 border-b-2 border-neutral-500 bg-neutral-900"
+              : "text-neutral-400 hover:text-neutral-200"
           }`}
         >
           <Zap className="h-3 w-3" strokeWidth={2} />
@@ -243,17 +243,17 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
                     key={tool.type}
                     draggable={true}
                     onDragStart={(e) => onDragStart(e, tool.type)}
-                    className="group cursor-grab active:cursor-grabbing px-3 py-2.5 rounded border border-neutral-200 bg-white hover:border-neutral-400 hover:shadow-sm transition-all duration-150"
+                    className="group cursor-grab active:cursor-grabbing px-3 py-2.5 rounded border border-neutral-800 bg-neutral-900 hover:border-neutral-600 hover:bg-neutral-800 transition-all duration-150"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 text-neutral-600 group-hover:text-neutral-900 transition-colors">
+                      <div className="mt-0.5 text-neutral-400 group-hover:text-neutral-200 transition-colors">
                         <Icon className="h-4 w-4" strokeWidth={1.5} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-neutral-900 tracking-tight">
+                        <div className="text-sm font-medium text-neutral-100 tracking-tight">
                           {tool.label}
                         </div>
-                        <div className="text-xs text-neutral-500 mt-0.5">
+                        <div className="text-xs text-neutral-400 mt-0.5">
                           {tool.description}
                         </div>
                       </div>
@@ -263,8 +263,8 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
               })}
             </div>
           </div>
-          <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50">
-            <p className="text-xs text-neutral-500 leading-relaxed">
+          <div className="px-4 py-3 border-t border-neutral-800 bg-[#0b0d10]">
+            <p className="text-xs text-neutral-400 leading-relaxed">
               Drag and drop tools to build your Agent
             </p>
           </div>
@@ -282,7 +282,7 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
                 return (
                   <div key={cat}>
                     <div className="px-1 pb-1.5 pt-1">
-                      <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-widest">
+                      <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">
                         {CATEGORY_LABELS[cat]}
                       </span>
                     </div>
@@ -291,22 +291,22 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
                         <button
                           key={template.id}
                           onClick={() => onApplyTemplate?.(template)}
-                          className="w-full text-left px-3 py-2.5 rounded border border-neutral-200 bg-white hover:border-neutral-400 hover:shadow-sm transition-all duration-150 group"
+                          className="w-full text-left px-3 py-2.5 rounded border border-neutral-800 bg-neutral-900 hover:border-neutral-600 transition-all duration-150 group"
                         >
                           <div className="flex items-start gap-2.5">
                             <span className="text-base leading-none mt-0.5">{template.emoji}</span>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-neutral-900 tracking-tight group-hover:text-neutral-900">
+                              <div className="text-sm font-medium text-neutral-100 tracking-tight group-hover:text-neutral-100">
                                 {template.name}
                               </div>
-                              <div className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
+                              <div className="text-xs text-neutral-400 mt-0.5 leading-relaxed">
                                 {template.description}
                               </div>
                               <div className="flex gap-1 mt-1.5 flex-wrap">
                                 {template.tools.map((t, i) => (
                                   <span
                                     key={i}
-                                    className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 font-mono"
+                                    className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono"
                                   >
                                     {t.tool}
                                   </span>
@@ -322,8 +322,8 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
               })}
             </div>
           </div>
-          <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50">
-            <p className="text-xs text-neutral-500 leading-relaxed">
+          <div className="px-4 py-3 border-t border-neutral-800 bg-[#0b0d10]">
+            <p className="text-xs text-neutral-400 leading-relaxed">
               Click a template to load it onto the canvas
             </p>
           </div>

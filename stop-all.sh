@@ -3,7 +3,7 @@
 # Script to stop all InFlow services
 set -e
 
-BASE_DIR="/home/lviffy/Projects/onehack/InFlow"
+BASE_DIR="/home/lviffy/Projects/onehack/blockops"
 
 echo "🛑 Stopping InFlow Services..."
 

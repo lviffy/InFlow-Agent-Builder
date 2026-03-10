@@ -43,9 +43,10 @@ const TOOL_ENDPOINTS = {
   check_oneid: { method: 'GET', path: '/dex/oneid/{address}' }
 };
 
-function mapToolParams(tool, params = {}, fallbackMessage) {
+function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
   const missing = [];
   let mapped = { ...params };
+  const defaultWalletAddress = defaults.walletAddress || defaults.wallet_address;
 
   switch (tool) {
     case 'fetch_price': {
@@ -57,7 +58,7 @@ function mapToolParams(tool, params = {}, fallbackMessage) {
       break;
     }
     case 'get_balance': {
-      const address = params.address || params.wallet_address;
+      const address = params.address || params.wallet_address || defaultWalletAddress;
       mapped = { address };
       if (!address) missing.push('address');
       break;
@@ -250,7 +251,7 @@ function mapToolParams(tool, params = {}, fallbackMessage) {
       break;
     }
     case 'wallet_history': {
-      const address = params.address || params.wallet_address;
+      const address = params.address || params.wallet_address || defaultWalletAddress;
       mapped = { address };
       if (!address) missing.push('address');
       break;
@@ -352,7 +353,7 @@ function mapToolParams(tool, params = {}, fallbackMessage) {
       break;
     }
     case 'check_oneid': {
-      const address = params.address || params.wallet_address;
+      const address = params.address || params.wallet_address || defaultWalletAddress;
       mapped = { address };
       if (!address) missing.push('address');
       break;
@@ -577,9 +578,9 @@ function safeYesNoAnswer(params) {
   };
 }
 
-async function executeToolStep(step, fallbackMessage) {
+async function executeToolStep(step, fallbackMessage, defaults = {}) {
   const { tool, parameters } = step;
-  const mapping = mapToolParams(tool, parameters, fallbackMessage);
+  const mapping = mapToolParams(tool, parameters, fallbackMessage, defaults);
 
   if (mapping.missing.length > 0) {
     return {
@@ -788,7 +789,7 @@ function interpolateParameters(params, previousResults) {
   return interpolated;
 }
 
-async function executeToolsDirectly(routingPlan, fallbackMessage) {
+async function executeToolsDirectly(routingPlan, fallbackMessage, defaults = {}) {
   if (!routingPlan?.execution_plan?.steps?.length) {
     return { tool_calls: [], results: [] };
   }
@@ -796,7 +797,7 @@ async function executeToolsDirectly(routingPlan, fallbackMessage) {
   const { steps, type } = routingPlan.execution_plan;
 
   if (type === 'parallel') {
-    const results = await Promise.all(steps.map(step => executeToolStep(step, fallbackMessage)));
+    const results = await Promise.all(steps.map(step => executeToolStep(step, fallbackMessage, defaults)));
     return {
       tool_calls: results.map(item => item.tool_call),
       results: results.map(item => item.result)
@@ -812,7 +813,7 @@ async function executeToolsDirectly(routingPlan, fallbackMessage) {
       parameters: interpolateParameters(step.parameters, toolResults)
     };
     
-    const { tool_call, result } = await executeToolStep(interpolatedStep, fallbackMessage);
+    const { tool_call, result } = await executeToolStep(interpolatedStep, fallbackMessage, defaults);
     toolCalls.push(tool_call);
     toolResults.push(result);
     if (!result.success) {

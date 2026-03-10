@@ -173,7 +173,7 @@ export default function MyAgents() {
               </Link>
             </Button>
             <div className="flex-1" />
-            <Button asChild size="sm" className="h-8 bg-foreground text-background hover:bg-foreground/90 text-xs font-medium">
+            <Button asChild size="sm" className="h-8 border border-neutral-300 bg-neutral-100 text-neutral-900 hover:bg-neutral-200 text-xs font-medium">
               <Link href="/agent-builder">
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 Create Agent
@@ -181,7 +181,7 @@ export default function MyAgents() {
             </Button>
           </div>
 
-          <Separator className="my-6" />
+          <Separator className="my-6 bg-neutral-800" />
 
           {/* Agent List */}
           {loading ? (
@@ -193,21 +193,21 @@ export default function MyAgents() {
               {agents.map((agent) => (
                 <div
                   key={agent.id}
-                  className="group flex items-center gap-4 rounded-lg border border-border bg-background px-4 py-3.5 transition-colors hover:bg-muted/40 cursor-pointer"
+                  className="group flex items-center gap-4 rounded-lg border border-neutral-800 bg-background px-4 py-3.5 transition-colors hover:bg-neutral-900/40 cursor-pointer"
                   onClick={() => router.push(`/agent/${agent.id}/chat`)}
                 >
                   {/* Icon */}
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/50">
-                    <Bot className="h-4 w-4 text-foreground/70" />
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-neutral-800 bg-neutral-900/50">
+                    <Bot className="h-4 w-4 text-neutral-300" />
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-foreground truncate">
+                      <span className="text-sm font-medium text-neutral-100 truncate">
                         {agent.name}
                       </span>
-                      <Badge variant="secondary" className="text-[10px] font-normal px-1.5 py-0 h-4 shrink-0">
+                      <Badge variant="secondary" className="text-[10px] font-normal px-1.5 py-0 h-4 shrink-0 bg-neutral-800 text-neutral-200 border border-neutral-700">
                         {agent.tools.length} {agent.tools.length === 1 ? "tool" : "tools"}
                       </Badge>
                       {agent.gas_budget != null && agent.gas_budget > 0 && (
@@ -289,7 +289,7 @@ export default function MyAgents() {
                   {/* Always-visible chat button on mobile */}
                   <Button
                     size="sm"
-                    className="h-8 shrink-0 bg-foreground text-background hover:bg-foreground/90 text-xs font-medium sm:hidden"
+                    className="h-8 shrink-0 bg-neutral-200 text-neutral-900 hover:bg-neutral-300 text-xs font-medium sm:hidden"
                     onClick={() => router.push(`/agent/${agent.id}/chat`)}
                   >
                     Chat
@@ -303,11 +303,11 @@ export default function MyAgents() {
               <div className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-border">
                 <Bot className="h-5 w-5 text-muted-foreground" />
               </div>
-              <h3 className="mt-4 text-sm font-medium text-foreground">No agents yet</h3>
+              <h3 className="mt-4 text-sm font-medium text-neutral-100">No agents yet</h3>
               <p className="mt-1 text-xs text-muted-foreground max-w-xs">
                 Create your first agent to start automating blockchain operations.
               </p>
-              <Button asChild size="sm" className="mt-5 h-8 bg-foreground text-background hover:bg-foreground/90 text-xs font-medium">
+              <Button asChild size="sm" className="mt-5 h-8 bg-neutral-200 text-neutral-900 hover:bg-neutral-300 text-xs font-medium">
                 <Link href="/agent-builder">
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   Create Agent
@@ -330,7 +330,7 @@ export default function MyAgents() {
               <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmDelete}
-                className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90"
+                className="h-8 text-xs bg-neutral-200 text-neutral-900 hover:bg-neutral-300"
               >
                 Delete
               </AlertDialogAction>

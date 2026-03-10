@@ -291,7 +291,11 @@ async function chat(req, res) {
         // Always try direct tool execution first before falling back to simple chat
         
         try {
-          const directExecResult = await executeToolsDirectlyService(routingPlan, truncatedMessage);
+          const directExecResult = await executeToolsDirectlyService(
+            routingPlan,
+            truncatedMessage,
+            { walletAddress }
+          );
           
           if (directExecResult && directExecResult.results && directExecResult.results.length > 0) {
             const formatted = formatToolResponse(directExecResult);

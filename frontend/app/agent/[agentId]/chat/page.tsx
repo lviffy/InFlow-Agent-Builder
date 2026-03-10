@@ -57,7 +57,7 @@ function ToolDetailsView({ toolResults }: { toolResults: ToolResults }) {
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-3">
       <CollapsibleTrigger asChild>
-        <button className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+        <button className="flex items-center gap-1.5 text-[11px] text-neutral-400 hover:text-neutral-200 transition-colors">
           <Wrench className="h-3 w-3" />
           <span>{toolResults.tool_calls.length} tool call{toolResults.tool_calls.length > 1 ? "s" : ""}</span>
           {isOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -67,27 +67,27 @@ function ToolDetailsView({ toolResults }: { toolResults: ToolResults }) {
         {toolResults.tool_calls.map((toolCall, index) => {
           const result = toolResults.results[index]
           return (
-            <div key={index} className="rounded-md border border-border bg-background/50 overflow-hidden">
-              <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/30">
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-mono">
+            <div key={index} className="rounded-md border border-neutral-800 bg-neutral-950/60 overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-1.5 border-b border-neutral-800 bg-neutral-900/60">
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-mono border-neutral-700 text-neutral-200">
                   {toolCall.tool}
                 </Badge>
-                <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
-                <span className="text-[10px] font-medium text-muted-foreground">
+                <ArrowRight className="h-2.5 w-2.5 text-neutral-500" />
+                <span className="text-[10px] font-medium text-neutral-400">
                   {result?.success ? "ok" : "err"}
                 </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-neutral-800">
                 <div className="p-2">
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">Request</span>
-                  <pre className="mt-1 text-[10px] font-mono text-foreground/80 whitespace-pre-wrap break-all leading-relaxed">
+                  <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-medium">Request</span>
+                  <pre className="mt-1 text-[10px] font-mono text-neutral-300 whitespace-pre-wrap break-all leading-relaxed">
                     {JSON.stringify(toolCall.parameters || {}, null, 2)}
                   </pre>
                 </div>
                 <div className="p-2 overflow-hidden">
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">Response</span>
-                  <div className="mt-1 max-h-[160px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
-                    <pre className="text-[10px] font-mono text-foreground/80 whitespace-pre-wrap break-all leading-relaxed">
+                  <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-medium">Response</span>
+                  <div className="mt-1 max-h-[160px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-700">
+                    <pre className="text-[10px] font-mono text-neutral-300 whitespace-pre-wrap break-all leading-relaxed">
                       {result?.error
                         ? JSON.stringify({ error: result.error }, null, 2)
                         : JSON.stringify(result?.result || {}, null, 2)}
@@ -127,9 +127,9 @@ function formatContent(content: string): string {
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/```(?:json)?\n([\s\S]*?)\n```/g, (_, code) => {
-      return `<pre class="mt-2 rounded border border-border bg-muted/40 p-2.5 font-mono text-[11px] overflow-x-auto leading-relaxed">${code}</pre>`
+      return `<pre class="mt-2 rounded border border-neutral-800 bg-neutral-900/60 p-2.5 font-mono text-[11px] overflow-x-auto leading-relaxed">${code}</pre>`
     })
-    .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-[11px] font-mono">$1</code>')
+    .replace(/`([^`]+)`/g, '<code class="bg-neutral-800 px-1 py-0.5 rounded text-[11px] font-mono">$1</code>')
 }
 
 function getSuggestedPrompt(tool: string): string {
@@ -233,7 +233,7 @@ export default function AgentChatPage() {
         message: userQuery,
         conversationId: conversationId,
         systemPrompt: `You are a helpful AI assistant for blockchain operations. The agent has these tools: ${agent.tools?.map((t) => t.tool).join(", ")}`,
-        walletAddress: privyWalletAddress || undefined,
+        walletAddress: privyWalletAddress || account?.address || undefined,
       })
 
       if (data.isNewConversation) {
@@ -318,7 +318,7 @@ export default function AgentChatPage() {
     <TooltipProvider>
       <div className="flex h-screen flex-col bg-background">
         {/* Header */}
-        <header className="shrink-0 border-b border-border">
+        <header className="shrink-0 border-b border-neutral-800">
           <div className="mx-auto flex h-12 max-w-2xl items-center justify-between px-4">
             <div className="flex items-center gap-2.5">
               <Tooltip>
@@ -334,9 +334,9 @@ export default function AgentChatPage() {
                 </TooltipTrigger>
                 <TooltipContent side="bottom"><p>Back</p></TooltipContent>
               </Tooltip>
-              <Separator orientation="vertical" className="h-4" />
-              <span className="text-sm font-medium text-foreground">{agent.name}</span>
-              <Badge variant="secondary" className="text-[10px] h-4 px-1.5 py-0 font-normal">
+              <Separator orientation="vertical" className="h-4 bg-neutral-700" />
+              <span className="text-sm font-medium text-neutral-100">{agent.name}</span>
+              <Badge variant="secondary" className="text-[10px] h-4 px-1.5 py-0 font-normal bg-neutral-800 text-neutral-200 border border-neutral-700">
                 {agent.tools?.length || 0} {(agent.tools?.length || 0) === 1 ? "tool" : "tools"}
               </Badge>
               {agent.gas_budget != null && agent.gas_budget > 0 && (
@@ -364,7 +364,7 @@ export default function AgentChatPage() {
                     <CircleDot className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">{agent.name}</p>
+                    <p className="text-sm font-medium text-neutral-100">{agent.name}</p>
                     {(dbUser?.ons_name || dbUser?.did) && (
                       <p className="mt-0.5 text-[10px] text-muted-foreground/60 flex items-center justify-center gap-1">
                         {dbUser.ons_name
@@ -380,7 +380,7 @@ export default function AgentChatPage() {
                         <button
                           key={i}
                           onClick={() => setInput(getSuggestedPrompt(t.tool))}
-                          className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                          className="inline-flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-900/70 px-2.5 py-1 text-[11px] text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-colors"
                         >
                           <Zap className="h-2.5 w-2.5" />
                           {getSuggestedPrompt(t.tool)}
@@ -405,8 +405,8 @@ export default function AgentChatPage() {
                     className={cn(
                       "max-w-[80%] min-w-0 rounded-2xl px-4 py-2.5 break-words",
                       message.role === "user"
-                        ? "bg-foreground text-background rounded-br-md"
-                        : "bg-muted/60 text-foreground border border-border rounded-bl-md"
+                        ? "bg-neutral-200 text-neutral-900 rounded-br-md"
+                        : "bg-neutral-900/60 text-neutral-100 border border-neutral-800 rounded-bl-md"
                     )}
                   >
                     <div
@@ -421,7 +421,7 @@ export default function AgentChatPage() {
                     <div
                       className={cn(
                         "text-[10px] mt-1.5",
-                        message.role === "user" ? "text-background/50" : "text-muted-foreground/60"
+                        message.role === "user" ? "text-neutral-600" : "text-neutral-500"
                       )}
                     >
                       {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -432,7 +432,7 @@ export default function AgentChatPage() {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted/60 border border-border rounded-2xl rounded-bl-md px-4 py-2.5">
+                  <div className="bg-neutral-900/60 border border-neutral-800 rounded-2xl rounded-bl-md px-4 py-2.5">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">Thinking…</span>
@@ -446,7 +446,7 @@ export default function AgentChatPage() {
         </div>
 
         {/* Input */}
-        <footer className="shrink-0 border-t border-border bg-background">
+        <footer className="shrink-0 border-t border-neutral-800 bg-background">
           <div className="mx-auto flex max-w-2xl items-end gap-2 px-4 py-3">
             <Textarea
               ref={textareaRef}
@@ -454,7 +454,7 @@ export default function AgentChatPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Message…"
-              className="min-h-[40px] max-h-[120px] flex-1 resize-none rounded-lg border-border bg-muted/30 px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring"
+              className="min-h-[40px] max-h-[120px] flex-1 resize-none rounded-lg border-neutral-700 bg-neutral-900/50 px-3 py-2.5 text-sm placeholder:text-neutral-500 focus-visible:bg-neutral-950 focus-visible:ring-1 focus-visible:ring-neutral-500"
               disabled={isLoading || !dbUser?.id}
             />
             <Tooltip>
@@ -463,7 +463,7 @@ export default function AgentChatPage() {
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading || !dbUser?.id}
                   size="icon"
-                  className="h-10 w-10 shrink-0 rounded-lg bg-foreground text-background hover:bg-foreground/90"
+                  className="h-10 w-10 shrink-0 rounded-lg bg-neutral-200 text-neutral-900 hover:bg-neutral-300"
                 >
                   {isLoading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -482,13 +482,13 @@ export default function WorkflowBuilder({ agentId }: WorkflowBuilderProps) {
   return (
     <div className="flex h-screen relative">
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex w-64 border-r border-gray-200 flex-col bg-gray-50">
+      <div className="hidden md:flex w-64 border-r border-neutral-800 flex-col bg-[#0b0d10]">
         <div className="flex-1 p-4 overflow-y-auto">
           <NodeLibrary onApplyTemplate={handleApplyTemplate} />
         </div>
         
         {/* AI Quota at bottom of sidebar */}
-        <div className="border-t border-gray-200 p-3">
+        <div className="border-t border-neutral-800 p-3 bg-[#0b0d10]">
           <AIQuotaCompact />
         </div>
       </div>
@@ -497,12 +497,12 @@ export default function WorkflowBuilder({ agentId }: WorkflowBuilderProps) {
       {showNodeLibrary && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowNodeLibrary(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold text-lg">Node Library</h3>
+          <div className="absolute bottom-0 left-0 right-0 bg-[#0f1115] rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col border border-neutral-800">
+            <div className="flex items-center justify-between p-4 border-b border-neutral-800">
+              <h3 className="font-semibold text-lg text-neutral-100">Node Library</h3>
               <button
                 onClick={() => setShowNodeLibrary(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-neutral-800 rounded-lg text-neutral-300"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -512,7 +512,7 @@ export default function WorkflowBuilder({ agentId }: WorkflowBuilderProps) {
             <div className="flex-1 p-4 overflow-y-auto">
               <NodeLibrary onApplyTemplate={handleApplyTemplate} />
             </div>
-            <div className="border-t border-gray-200 p-3">
+            <div className="border-t border-neutral-800 p-3 bg-[#0b0d10]">
               <AIQuotaCompact />
             </div>
           </div>
@@ -746,8 +746,8 @@ export default function WorkflowBuilder({ agentId }: WorkflowBuilderProps) {
               </button>
             </div>            <div className="space-y-2">
               <Label>Tools to be saved</Label>
-              <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+              <div className="p-3 rounded-md border border-neutral-800 bg-neutral-900">
+                <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap text-neutral-200">
                   {JSON.stringify(workflowToTools(nodes, edges, AGENT_NODE_ID), null, 2)}
                 </pre>
               </div>
