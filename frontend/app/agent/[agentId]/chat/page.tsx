@@ -86,7 +86,7 @@ function ToolDetailsView({ toolResults }: { toolResults: ToolResults }) {
                 </div>
                 <div className="p-2 overflow-hidden">
                   <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-medium">Response</span>
-                  <div className="mt-1 max-h-[160px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-700">
+                  <div className="mt-1 max-h-[160px] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     <pre className="text-[10px] font-mono text-neutral-300 whitespace-pre-wrap break-all leading-relaxed">
                       {result?.error
                         ? JSON.stringify({ error: result.error }, null, 2)
@@ -355,7 +355,7 @@ export default function AgentChatPage() {
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="mx-auto max-w-2xl px-4 py-6">
             {messages.length === 0 && (
               <div className="flex min-h-[65vh] items-center justify-center">

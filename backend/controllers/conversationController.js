@@ -3,6 +3,30 @@ const { buildContext, truncateMessage } = require('../utils/memory');
 const { chatWithAI } = require('../services/aiService');
 const { intelligentToolRouting, convertToAgentFormat } = require('../services/toolRouter');
 const { executeToolsDirectly: executeToolsDirectlyService, formatToolResponse } = require('../services/directToolExecutor');
+const { createHash } = require('crypto');
+
+function isUuid(value) {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function normalizeConversationUserId(userId) {
+  if (isUuid(userId)) {
+    return userId.toLowerCase();
+  }
+
+  // Deterministic UUIDv5-like format derived from wallet/text IDs.
+  // This lets us persist conversations even when auth user IDs are non-UUID (e.g. wallet addresses).
+  const hex = createHash('sha256').update(String(userId)).digest('hex');
+  const variantNibble = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `5${hex.slice(13, 16)}`,
+    `${variantNibble}${hex.slice(17, 20)}`,
+    hex.slice(20, 32),
+  ].join('-');
+}
 
 /**
  * Main chat endpoint - handles conversation and AI response
@@ -11,6 +35,7 @@ const { executeToolsDirectly: executeToolsDirectlyService, formatToolResponse } 
 async function chat(req, res) {
   try {
     const { agentId, userId, message, conversationId, systemPrompt, walletAddress } = req.body;
+    const conversationUserId = normalizeConversationUserId(userId);
 
     // Validation
     if (!agentId || !userId || !message) {
@@ -50,22 +75,23 @@ async function chat(req, res) {
           .from('conversations')
           .insert({ 
             agent_id: agentId, 
-            user_id: userId, 
+            user_id: conversationUserId,
             title: truncatedMessage.slice(0, 100) // Use first 100 chars as title
           })
           .select()
           .single();
         
         if (error) {
-          // If it's a foreign key error (agent doesn't exist), fall back to in-memory mode
-          if (error.code === '23503' || error.code === '22P02') {
+          // If it's a foreign key error (agent doesn't exist), fall back to in-memory mode.
+          // UUID format errors should not happen after normalization and should surface.
+          if (error.code === '23503') {
             convId = `temp-${Date.now()}`;
             isNewConversation = true;
             messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
             // Disable Supabase for the rest of this request
             useSupabase = false;
           } else {
-            throw new Error('Failed to create conversation');
+            throw new Error(`Failed to create conversation: ${error.message || 'unknown error'}`);
           }
         } else {
           convId = data.id;
@@ -122,13 +148,15 @@ async function chat(req, res) {
       const rejectionMessage = "I'm a blockchain operations assistant and can only help with blockchain-related tasks such as checking cryptocurrency prices, wallet balances, deploying tokens/NFTs, and managing transactions. Please ask me something related to blockchain or crypto operations.";
       
       // Save rejection message
-      await supabase
-        .from('conversation_messages')
-        .insert({ 
-          conversation_id: convId, 
-          role: 'assistant', 
-          content: rejectionMessage
-        });
+      if (useSupabase) {
+        await supabase
+          .from('conversation_messages')
+          .insert({ 
+            conversation_id: convId, 
+            role: 'assistant', 
+            content: rejectionMessage
+          });
+      }
 
       return res.json({
         conversationId: convId,
@@ -402,10 +430,12 @@ async function listConversations(req, res) {
       return res.status(400).json({ error: 'Missing userId parameter' });
     }
 
+    const conversationUserId = normalizeConversationUserId(userId);
+
     let query = supabase
       .from('conversations')
       .select('id, agent_id, title, message_count, created_at, updated_at')
-      .eq('user_id', userId)
+      .eq('user_id', conversationUserId)
       .order('updated_at', { ascending: false })
       .limit(parseInt(limit));
 

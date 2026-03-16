@@ -405,17 +405,32 @@ function safeCalculate(params) {
     const aliasMap = {};
     for (const [varName, val] of Object.entries(variables)) {
       const vn = varName.toLowerCase();
+
+      // Generic normalization for current_* and *_usd style naming variants.
+      if (vn.startsWith('current_')) {
+        const stripped = vn.replace(/^current_/, '');
+        if (stripped && !(stripped in variables)) aliasMap[stripped] = val;
+      } else {
+        const currentAlias = `current_${vn}`;
+        if (!(currentAlias in variables)) aliasMap[currentAlias] = val;
+      }
+
+      if (vn.endsWith('_usd')) {
+        const noUsd = vn.replace(/_usd$/, '');
+        if (noUsd && !(noUsd in variables)) aliasMap[noUsd] = val;
+      }
+
       if (vn.includes('price')) {
         if (vn.includes('eth') || vn.includes('ethereum')) {
-          for (const alias of ['eth_price', 'ethereum_price', 'eth_price_usd', 'price_eth']) aliasMap[alias] = val;
+          for (const alias of ['eth_price', 'ethereum_price', 'eth_price_usd', 'price_eth', 'current_eth_price', 'current_ethereum_price']) aliasMap[alias] = val;
         } else if (vn.includes('btc') || vn.includes('bitcoin')) {
-          for (const alias of ['btc_price', 'bitcoin_price', 'btc_price_usd', 'price_btc']) aliasMap[alias] = val;
+          for (const alias of ['btc_price', 'bitcoin_price', 'btc_price_usd', 'price_btc', 'current_btc_price', 'current_bitcoin_price']) aliasMap[alias] = val;
         } else if (vn.includes('sol') || vn.includes('solana')) {
-          for (const alias of ['sol_price', 'solana_price', 'sol_price_usd', 'price_sol']) aliasMap[alias] = val;
+          for (const alias of ['sol_price', 'solana_price', 'sol_price_usd', 'price_sol', 'current_sol_price', 'current_solana_price']) aliasMap[alias] = val;
         } else if (vn.includes('arb') || vn.includes('arbitrum')) {
-          for (const alias of ['arb_price', 'arbitrum_price', 'arb_price_usd', 'token_price', 'token_price_usd', 'price_arb']) aliasMap[alias] = val;
+          for (const alias of ['arb_price', 'arbitrum_price', 'arb_price_usd', 'token_price', 'token_price_usd', 'price_arb', 'current_arb_price', 'current_arbitrum_price']) aliasMap[alias] = val;
         } else if (vn.includes('token')) {
-          for (const alias of ['token_price', 'token_price_usd', 'arb_price', 'sol_price', 'btc_price', 'target_price']) {
+          for (const alias of ['token_price', 'token_price_usd', 'arb_price', 'sol_price', 'btc_price', 'target_price', 'current_token_price']) {
             if (!(alias in variables)) aliasMap[alias] = val;
           }
         }
@@ -733,10 +748,14 @@ function interpolateParameters(params, previousResults) {
         if (coin.includes('ethereum') || coin.includes('eth')) {
           autoVariables.eth_price = price;
           autoVariables.eth_price_usd = price;
+          autoVariables.ethereum_price = price;
+          autoVariables.current_eth_price = price;
+          autoVariables.current_ethereum_price = price;
         } else {
           autoVariables.token_price = price;
           autoVariables.token_price_usd = price;
           autoVariables[`${coin}_price`] = price;
+          autoVariables[`current_${coin}_price`] = price;
         }
       }
     }
