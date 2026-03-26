@@ -4,7 +4,7 @@ require('dotenv').config();
 module.exports = {
   // OneChain Network Configuration
   ONECHAIN_TESTNET_RPC: process.env.ONECHAIN_TESTNET_RPC || 'https://rpc-testnet.onelabs.cc:443',
-  ONECHAIN_MAINNET_RPC: process.env.ONECHAIN_MAINNET_RPC || 'https://rpc-mainnet.onelabs.cc:443',
+  ONECHAIN_MAINNET_RPC: process.env.ONECHAIN_MAINNET_RPC || 'https://rpc.mainnet.onelabs.cc:443',
   ONECHAIN_DEVNET_RPC: process.env.ONECHAIN_DEVNET_RPC || 'https://rpc-devnet.onelabs.cc:443',
   NETWORK_NAME: process.env.ONECHAIN_NETWORK || 'OneChain Testnet',
   ACTIVE_NETWORK: process.env.ONECHAIN_ACTIVE_NETWORK || 'testnet',

@@ -87,7 +87,7 @@ async function transfer(req, res) {
     }));
   } catch (error) {
     console.error('Transfer error:', error);
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 
@@ -126,7 +126,7 @@ async function transferToken(req, res) {
     }));
   } catch (error) {
     console.error('Transfer object error:', error);
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 
@@ -170,7 +170,7 @@ async function getBalance(req, res) {
       explorerUrl: getAddressExplorerUrl(address),
     }));
   } catch (error) {
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 
@@ -257,7 +257,7 @@ async function prepareTransfer(req, res) {
     }));
   } catch (error) {
     console.error('Prepare transfer error:', error);
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 
@@ -318,7 +318,7 @@ async function airdrop(req, res) {
     }));
   } catch (error) {
     console.error('Airdrop error:', error);
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 

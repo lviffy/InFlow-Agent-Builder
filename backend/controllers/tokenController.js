@@ -97,7 +97,7 @@ async function deployToken(req, res) {
     );
   } catch (error) {
     console.error('Create token error:', error);
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 
@@ -129,7 +129,7 @@ async function getTokenInfo(req, res) {
       })
     );
   } catch (error) {
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 
@@ -153,7 +153,7 @@ async function getTokenBalance(req, res) {
       })
     );
   } catch (error) {
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 

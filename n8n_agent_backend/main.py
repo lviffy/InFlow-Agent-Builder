@@ -52,9 +52,14 @@ if not GROQ_API_KEYS and not GEMINI_API_KEY:
 
 # Backend URL - configurable via environment or defaults to localhost
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:3001")
+REDACTED_PRIVATE_KEY = "[REDACTED_PRIVATE_KEY]"
 
 # USDO — OneChain native USD stablecoin coin type
 USDO_COIN_TYPE = os.getenv("USDO_COIN_TYPE", f"{os.getenv('USDO_PACKAGE_ID', '')}::usdo::USDO")
+
+def should_inject_private_key(function_args: Dict[str, Any]) -> bool:
+    value = function_args.get("privateKey")
+    return (not value) or value == REDACTED_PRIVATE_KEY
 
 # Tool Definitions
 TOOL_DEFINITIONS = {
@@ -1424,7 +1429,7 @@ def process_agent_conversation(
                         # Add private key if needed and available
                         if private_key and function_name in TOOL_DEFINITIONS:
                             tool_params = TOOL_DEFINITIONS[function_name]["parameters"]["properties"]
-                            if "privateKey" in tool_params and "privateKey" not in function_args:
+                            if "privateKey" in tool_params and should_inject_private_key(function_args):
                                 function_args["privateKey"] = private_key
                         
                         # Auto-inject missing variables for calculate from prior tool results
@@ -1462,7 +1467,7 @@ def process_agent_conversation(
                             # Fallback to private key if needed and available
                             elif private_key and function_name in TOOL_DEFINITIONS:
                                 tool_params = TOOL_DEFINITIONS[function_name]["parameters"]["properties"]
-                                if "privateKey" in tool_params and "privateKey" not in function_args:
+                                if "privateKey" in tool_params and should_inject_private_key(function_args):
                                     function_args["privateKey"] = private_key
                             
                             all_tool_calls.append({
@@ -1649,7 +1654,7 @@ def process_agent_conversation(
                 # Fallback to private key if needed and available
                 elif private_key and function_name in TOOL_DEFINITIONS:
                     tool_params = TOOL_DEFINITIONS[function_name]["parameters"]["properties"]
-                    if "privateKey" in tool_params and "privateKey" not in function_args:
+                    if "privateKey" in tool_params and should_inject_private_key(function_args):
                         function_args["privateKey"] = private_key
                 
                 # Auto-inject missing variables for calculate from prior tool results

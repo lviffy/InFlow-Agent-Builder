@@ -2,6 +2,7 @@ const axios = require('axios');
 const { PORT } = require('../config/constants');
 
 const BASE_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+const REDACTED_PRIVATE_KEY = '[REDACTED_PRIVATE_KEY]';
 
 const TOOL_ENDPOINTS = {
   fetch_price: { method: 'POST', path: '/price/token' },
@@ -47,6 +48,14 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
   const missing = [];
   let mapped = { ...params };
   const defaultWalletAddress = defaults.walletAddress || defaults.wallet_address;
+  const defaultPrivateKey = defaults.privateKey || defaults.private_key;
+  const resolvePrivateKey = () => {
+    const explicitPrivateKey = params.privateKey || params.private_key;
+    if (explicitPrivateKey && explicitPrivateKey !== REDACTED_PRIVATE_KEY) {
+      return explicitPrivateKey;
+    }
+    return defaultPrivateKey;
+  };
 
   switch (tool) {
     case 'fetch_price': {
@@ -64,7 +73,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'transfer': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const toAddress = params.toAddress || params.to_address;
       const amount = params.amount;
       const tokenId = params.tokenId || params.token_id || params.tokenId;
@@ -76,7 +85,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'deploy_token': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const name = params.name;
       const symbol = params.symbol;
       const initialSupply = params.initialSupply || params.initial_supply;
@@ -90,7 +99,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'deploy_nft_collection': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const name = params.name;
       const symbol = params.symbol;
       const baseURI = params.baseURI || params.base_uri;
@@ -102,7 +111,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'mint_nft': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const collectionAddress = params.collectionAddress || params.contract_address;
       const toAddress = params.toAddress || params.to_address;
       mapped = { privateKey, collectionAddress, toAddress };
@@ -172,7 +181,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'airdrop': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const recipients = params.recipients || [];
       // Also handle flat arrays
       if (!recipients.length && params.addresses && params.amounts) {
@@ -269,7 +278,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'approve_token': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const tokenAddress = params.tokenAddress || params.token_address;
       const spenderAddress = params.spenderAddress || params.spender_address || params.spender;
       const amount = params.amount;
@@ -281,7 +290,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'revoke_approval': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const tokenAddress = params.tokenAddress || params.token_address;
       const spenderAddress = params.spenderAddress || params.spender_address || params.spender;
       mapped = { privateKey, tokenAddress, spenderAddress };
@@ -292,7 +301,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
     }
     case 'swap': {
       // Legacy alias — same shape as swap_tokens
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const tokenIn = params.tokenIn || params.token_in || params.from_token;
       const tokenOut = params.tokenOut || params.token_out || params.to_token;
       const amountIn = params.amountIn || params.amount_in || params.amount;
@@ -314,7 +323,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'swap_tokens': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const tokenIn = params.tokenIn || params.token_in;
       const tokenOut = params.tokenOut || params.token_out;
       const amountIn = params.amountIn || params.amount_in || params.amount;
@@ -340,7 +349,7 @@ function mapToolParams(tool, params = {}, fallbackMessage, defaults = {}) {
       break;
     }
     case 'cross_border_transfer': {
-      const privateKey = params.privateKey || params.private_key;
+      const privateKey = resolvePrivateKey();
       const recipient = params.recipient || params.to_address || params.toAddress;
       const amount = params.amount;
       const currency = params.currency || params.token || 'OCT';
@@ -683,9 +692,20 @@ async function executeToolStep(step, fallbackMessage, defaults = {}) {
       result: { success: true, tool, result: response.data }
     };
   } catch (error) {
+    const status = error.response?.status;
+    const backendError =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.response?.data?.details ||
+      error.message;
+
     return {
       tool_call: { tool, parameters: mapping.mapped },
-      result: { success: false, tool, error: error.message }
+      result: {
+        success: false,
+        tool,
+        error: status ? `${backendError} (HTTP ${status})` : backendError
+      }
     };
   }
 }
@@ -886,16 +906,16 @@ function formatToolResponse(toolResults) {
         return `Balance for ${payload.address}: ${payload.balance} OCT.`;
       }
       case 'transfer': {
-        return `Transfer completed. Tx: ${payload.transactionHash || 'unknown'}.`;
+        return `Transfer completed. Tx: ${payload.transactionDigest || payload.transactionHash || 'unknown'}.`;
       }
       case 'deploy_token': {
-        return `Token deployed. Token ID: ${payload.tokenId || 'unknown'}. Tx: ${payload.transactionHash || 'unknown'}.`;
+        return `Token deployed. Token ID: ${payload.tokenObjectId || payload.tokenId || 'unknown'}. Tx: ${payload.transactionDigest || payload.transactionHash || 'unknown'}.`;
       }
       case 'deploy_nft_collection': {
-        return `NFT collection deployed. Address: ${payload.collectionAddress || 'unknown'}. Tx: ${payload.transactionHash || 'unknown'}.`;
+        return `NFT collection deployed. Address: ${payload.collectionObjectId || payload.collectionAddress || 'unknown'}. Tx: ${payload.transactionDigest || payload.transactionHash || 'unknown'}.`;
       }
       case 'mint_nft': {
-        return `NFT minted. Token ID: ${payload.tokenId || 'unknown'}. Tx: ${payload.transactionHash || 'unknown'}.`;
+        return `NFT minted. Token ID: ${payload.nftObjectId || payload.tokenId || 'unknown'}. Tx: ${payload.transactionDigest || payload.transactionHash || 'unknown'}.`;
       }
       case 'get_token_info': {
         return `Token info: ${payload.name || 'unknown'} (${payload.symbol || 'unknown'}), supply ${payload.totalSupply || 'unknown'}.`;

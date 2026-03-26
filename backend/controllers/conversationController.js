@@ -28,6 +28,94 @@ function normalizeConversationUserId(userId) {
   ].join('-');
 }
 
+const PRIVATE_KEY_PLACEHOLDER = '[REDACTED_PRIVATE_KEY]';
+const ONECHAIN_ADDRESS_REGEX = /0x[a-fA-F0-9]{64}/g;
+const ONECHAIN_ADDRESS_TEST_REGEX = /0x[a-fA-F0-9]{64}/;
+
+function extractPrivateKeyFromText(text = '') {
+  if (typeof text !== 'string' || !text) {
+    return null;
+  }
+
+  const bech32Key = text.match(/\bsuiprivkey[0-9a-z]+\b/i);
+  if (bech32Key) {
+    return bech32Key[0];
+  }
+
+  if (!/(private|secret)\s*key/i.test(text)) {
+    return null;
+  }
+
+  const hexKey = text.match(/\b0x[a-fA-F0-9]{64}\b/);
+  if (hexKey) {
+    return hexKey[0];
+  }
+
+  const base64Key = text.match(/\b[A-Za-z0-9+/]{43}={0,2}\b/);
+  return base64Key ? base64Key[0] : null;
+}
+
+function redactPrivateKeys(text = '') {
+  if (typeof text !== 'string' || !text) {
+    return text;
+  }
+
+  return text
+    .replace(/\bsuiprivkey[0-9a-z]+\b/gi, PRIVATE_KEY_PLACEHOLDER)
+    .replace(/((?:private|secret)\s*key\s*[:=-]?\s*)(0x[a-fA-F0-9]{64})/gi, `$1${PRIVATE_KEY_PLACEHOLDER}`)
+    .replace(/((?:private|secret)\s*key\s*[:=-]?\s*)([A-Za-z0-9+/]{43}={0,2})/gi, `$1${PRIVATE_KEY_PLACEHOLDER}`);
+}
+
+function sanitizeConversationMessages(messages = []) {
+  return messages.map((message) => ({
+    ...message,
+    content: redactPrivateKeys(message.content || '')
+  }));
+}
+
+function extractConversationPrivateKey(currentMessage, messages = []) {
+  const candidates = [
+    currentMessage,
+    ...messages.slice().reverse().map((message) => message.content || '')
+  ];
+
+  for (const candidate of candidates) {
+    const privateKey = extractPrivateKeyFromText(candidate);
+    if (privateKey) {
+      return privateKey;
+    }
+  }
+
+  return null;
+}
+
+function redactSensitiveData(value) {
+  if (Array.isArray(value)) {
+    return value.map(redactSensitiveData);
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, innerValue]) => {
+        if (key === 'privateKey' || key === 'private_key') {
+          return [key, PRIVATE_KEY_PLACEHOLDER];
+        }
+        return [key, redactSensitiveData(innerValue)];
+      })
+    );
+  }
+
+  if (typeof value === 'string') {
+    return redactPrivateKeys(value);
+  }
+
+  return value;
+}
+
+function sanitizeToolResults(toolResults) {
+  return toolResults ? redactSensitiveData(toolResults) : toolResults;
+}
+
 /**
  * Main chat endpoint - handles conversation and AI response
  * POST /api/chat
@@ -46,6 +134,7 @@ async function chat(req, res) {
 
     // Truncate message if too long
     const truncatedMessage = truncateMessage(message);
+    const sanitizedUserMessage = redactPrivateKeys(truncatedMessage);
 
     // Fetch agent gas_budget and user DID + ONS name for context
     let agentGasBudget = null;
@@ -76,7 +165,7 @@ async function chat(req, res) {
           .insert({ 
             agent_id: agentId, 
             user_id: conversationUserId,
-            title: truncatedMessage.slice(0, 100) // Use first 100 chars as title
+            title: sanitizedUserMessage.slice(0, 100) // Use first 100 chars as title
           })
           .select()
           .single();
@@ -87,7 +176,7 @@ async function chat(req, res) {
           if (error.code === '23503') {
             convId = `temp-${Date.now()}`;
             isNewConversation = true;
-            messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
+            messages = [{ role: 'user', content: sanitizedUserMessage, created_at: new Date().toISOString() }];
             // Disable Supabase for the rest of this request
             useSupabase = false;
           } else {
@@ -106,12 +195,12 @@ async function chat(req, res) {
           .insert({ 
             conversation_id: convId, 
             role: 'user', 
-            content: truncatedMessage 
+            content: sanitizedUserMessage 
           });
 
         if (msgError) {
           // Don't throw, just continue in memory-only mode
-          messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
+          messages = [{ role: 'user', content: sanitizedUserMessage, created_at: new Date().toISOString() }];
         }
       }
 
@@ -124,7 +213,7 @@ async function chat(req, res) {
           .order('created_at', { ascending: true });
 
         if (fetchError) {
-          messages = [{ role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }];
+          messages = [{ role: 'user', content: sanitizedUserMessage, created_at: new Date().toISOString() }];
         } else {
           messages = messageData;
         }
@@ -136,12 +225,15 @@ async function chat(req, res) {
       
       // Create minimal message history for context
       messages = [
-        { role: 'user', content: truncatedMessage, created_at: new Date().toISOString() }
+        { role: 'user', content: sanitizedUserMessage, created_at: new Date().toISOString() }
       ];
     }
 
+    const conversationPrivateKey = extractConversationPrivateKey(truncatedMessage, messages);
+    const safeMessages = sanitizeConversationMessages(messages);
+
     // Check if the message requires tools using intelligent AI routing
-    const routingPlan = await intelligentToolRouting(truncatedMessage, messages);
+    const routingPlan = await intelligentToolRouting(sanitizedUserMessage, safeMessages);
     
     // Guard rail: Reject off-topic questions
     if (routingPlan.is_off_topic) {
@@ -186,10 +278,13 @@ async function chat(req, res) {
       });
       
       // Also check if "missing" info is actually in conversation context
-      const contextStr = messages.map(m => m.content).join(' ');
+      const contextStr = safeMessages.map(m => m.content).join(' ');
       const finalMissingInfo = trulyMissingInfo.filter(info => {
         // Check if the missing info might already be in conversation context
-        if (/address/i.test(info) && /0x[a-fA-F0-9]{40}/.test(contextStr)) {
+        if (conversationPrivateKey && /private\s*key/i.test(info)) {
+          return false;
+        }
+        if (/address/i.test(info) && ONECHAIN_ADDRESS_TEST_REGEX.test(contextStr)) {
           return false;
         }
         if (/balance/i.test(info) && /\d+\.?\d*\s*ETH/i.test(contextStr)) {
@@ -228,18 +323,18 @@ async function chat(req, res) {
       
       try {
         // Build context summary from recent messages for the agent
-        const recentMessages = messages.slice(-10);
+        const recentMessages = safeMessages.slice(-10);
         
         // Extract key data points from conversation history
         const extractedData = [];
         for (const msg of recentMessages) {
           const content = msg.content || '';
           // Extract wallet addresses
-          const addresses = content.match(/0x[a-fA-F0-9]{40}/g);
+          const addresses = content.match(ONECHAIN_ADDRESS_REGEX);
           if (addresses) extractedData.push(`Wallet address: ${addresses[0]}`);
           // Extract balances
-          const balanceMatch = content.match(/Balance.*?:\s*([\d.]+)\s*ETH/i) || content.match(/([\d.]+)\s*ETH/i);
-          if (balanceMatch) extractedData.push(`ETH Balance: ${balanceMatch[1]} ETH`);
+          const balanceMatch = content.match(/Balance.*?:\s*([\d.]+)\s*(?:ETH|OCT)/i) || content.match(/([\d.]+)\s*(?:ETH|OCT)/i);
+          if (balanceMatch) extractedData.push(`Wallet balance: ${balanceMatch[1]}`);
           // Extract prices
           const priceMatch = content.match(/Current prices?:?\s*(.*)/i);
           if (priceMatch) extractedData.push(`Previous price data: ${priceMatch[1]}`);
@@ -254,7 +349,7 @@ async function chat(req, res) {
           : '';
         
         // Enhance user message with conversation context and routing analysis
-        const enhancedMessage = `${routingPlan.analysis}\n\nConversation history:\n${contextSummary}${dataContext}\n\nCurrent user query: ${truncatedMessage}\n\nExecution plan: ${routingPlan.execution_plan.type} with ${routingPlan.execution_plan.steps.length} steps: ${routingPlan.execution_plan.steps.map(s => s.tool).join(' → ')}`;
+        const enhancedMessage = `${routingPlan.analysis}\n\nConversation history:\n${contextSummary}${dataContext}\n\nCurrent user query: ${sanitizedUserMessage}\n\nExecution plan: ${routingPlan.execution_plan.type} with ${routingPlan.execution_plan.steps.length} steps: ${routingPlan.execution_plan.steps.map(s => s.tool).join(' -> ')}`;
         
         const agentBackendUrl = process.env.N8N_AGENT_BACKEND_URL || 'http://localhost:8000';
         const agentResponse = await fetch(`${agentBackendUrl}/agent/chat`, {
@@ -262,8 +357,8 @@ async function chat(req, res) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tools: tools,
-            user_message: enhancedMessage,
-            private_key: null,
+            user_message: redactPrivateKeys(enhancedMessage),
+            private_key: conversationPrivateKey || null,
             wallet_address: walletAddress || null,
             gas_budget: agentGasBudget,
             user_did: userDid,
@@ -310,19 +405,23 @@ async function chat(req, res) {
           }
         });
         
-        toolResults = {
+        toolResults = sanitizeToolResults({
           tool_calls: agentData.tool_calls || [],
           results: agentData.results || [],
           routing_plan: routingPlan
-        };
+        });
       } catch (agentError) {
         // Always try direct tool execution first before falling back to simple chat
         
         try {
           const directExecResult = await executeToolsDirectlyService(
             routingPlan,
-            truncatedMessage,
-            { walletAddress }
+            sanitizedUserMessage,
+            {
+              walletAddress,
+              privateKey: conversationPrivateKey,
+              private_key: conversationPrivateKey
+            }
           );
           
           if (directExecResult && directExecResult.results && directExecResult.results.length > 0) {
@@ -331,12 +430,12 @@ async function chat(req, res) {
             
             if (hasAnyData || formatted) {
               aiResponse = formatted || 'Tool executed but no output was produced.';
-              toolResults = {
+              toolResults = sanitizeToolResults({
                 tool_calls: directExecResult.tool_calls,
                 results: directExecResult.results,
                 routing_plan: routingPlan,
                 execution_mode: 'direct_fallback'
-              };
+              });
             } else {
               throw new Error('No usable data from direct execution');
             }
@@ -354,7 +453,7 @@ async function chat(req, res) {
             
             The user's request analysis: ${routingPlan.analysis}. Provide clear, accurate, and concise responses. Use **bold** formatting sparingly and only for important terms or key points that need emphasis.`;
           
-          const { context } = buildContext(messages, defaultSystemPrompt);
+          const { context } = buildContext(safeMessages, defaultSystemPrompt);
           aiResponse = await chatWithAI(context);
         }
       }
@@ -372,7 +471,7 @@ async function chat(req, res) {
         
         Provide clear, accurate, and concise responses. Use **bold** formatting sparingly.`;
       
-      const { context, tokenCount } = buildContext(messages, defaultSystemPrompt);
+      const { context, tokenCount } = buildContext(safeMessages, defaultSystemPrompt);
       aiResponse = await chatWithAI(context);
     }
 

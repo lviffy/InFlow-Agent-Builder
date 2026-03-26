@@ -51,7 +51,7 @@ async function deployNFTCollection(req, res) {
     }));
   } catch (error) {
     console.error('Create NFT collection error:', error);
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 
@@ -106,7 +106,7 @@ async function mintNFT(req, res) {
     }));
   } catch (error) {
     console.error('Mint NFT error:', error);
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 
@@ -125,7 +125,7 @@ async function getNFTInfo(req, res) {
       explorerUrl: getObjectExplorerUrl(objectId),
     }));
   } catch (error) {
-    return res.status(500).json(errorResponse(error.message));
+    return res.status(error.status || 500).json(errorResponse(error.message));
   }
 }
 

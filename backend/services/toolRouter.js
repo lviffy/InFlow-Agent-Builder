@@ -1,5 +1,8 @@
 const { chatWithAI } = require('./aiService');
 
+const ONECHAIN_ADDRESS_REGEX = /0x[a-fA-F0-9]{64}/g;
+const ONECHAIN_ADDRESS_TEST_REGEX = /0x[a-fA-F0-9]{64}/;
+
 /**
  * Available tools in the system
  */
@@ -229,7 +232,7 @@ async function intelligentToolRouting(userMessage, conversationHistory = []) {
     for (const msg of recentMessages) {
       const content = msg.content || '';
       // Extract wallet addresses
-      const addresses = content.match(/0x[a-fA-F0-9]{40}/g);
+      const addresses = content.match(ONECHAIN_ADDRESS_REGEX);
       if (addresses) extractedEntities.push(`Wallet addresses mentioned: ${addresses.join(', ')}`);
       // Extract ETH balances
       const balanceMatch = content.match(/(\d+\.?\d*)\s*ETH/i);
@@ -390,7 +393,7 @@ Respond ONLY with valid JSON, no other text.`;
       if (needsBalance && !hasGetBalance) {
         // Try to extract wallet address from conversation history
         const historyStr = (conversationHistory || []).map(m => m.content || '').join(' ');
-        const addrMatch = historyStr.match(/0x[a-fA-F0-9]{40}/);
+        const addrMatch = historyStr.match(ONECHAIN_ADDRESS_TEST_REGEX);
         const walletAddress = addrMatch ? addrMatch[0] : null;
         const balanceStep = {
           tool: 'get_balance',
