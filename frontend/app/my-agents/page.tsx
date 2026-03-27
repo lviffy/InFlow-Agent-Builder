@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -26,6 +26,7 @@ import {
   Code2,
   Fingerprint,
   Globe,
+  AtSign,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { getAgentsByUserId, deleteAgent } from "@/lib/agents"
@@ -78,13 +79,7 @@ export default function MyAgents() {
     }
   }, [ready, authenticated, router])
 
-  useEffect(() => {
-    if (ready && authenticated && user?.id) {
-      fetchAgents()
-    }
-  }, [ready, authenticated, user])
-
-  const fetchAgents = async () => {
+  const fetchAgents = useCallback(async () => {
     if (!user?.id) return
     setLoading(true)
     try {
@@ -95,7 +90,13 @@ export default function MyAgents() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (ready && authenticated && user?.id) {
+      fetchAgents()
+    }
+  }, [ready, authenticated, user?.id, fetchAgents])
 
   const handleDeleteAgent = async (agentId: string) => {
     setAgentToDelete(agentId)
@@ -153,6 +154,9 @@ export default function MyAgents() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button asChild variant="outline" size="sm" className="h-8 text-xs font-medium">
+                <Link href="/">Home</Link>
+              </Button>
               <AgentWalletModal open={walletModalOpen} onOpenChange={setWalletModalOpen} hideButton={isWalletLogin} />
               <UserProfile onLogout={logout} />
             </div>
