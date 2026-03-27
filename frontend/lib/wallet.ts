@@ -1,5 +1,5 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase'
 import { onechainClient, mistToOct } from './onechain'
 
 /**
@@ -48,6 +48,7 @@ export async function saveWalletToUser(
   walletAddress: string,
   privateKey: string
 ): Promise<void> {
+  const supabase = getSupabaseClient()
   const { error } = await supabase
     .from('users')
     .update({ wallet_address: walletAddress, private_key: privateKey })
@@ -59,6 +60,7 @@ export async function saveWalletToUser(
  * Remove wallet from the user's Supabase profile.
  */
 export async function removeWalletFromUser(userId: string): Promise<void> {
+  const supabase = getSupabaseClient()
   const { error } = await supabase
     .from('users')
     .update({ wallet_address: null, private_key: null })

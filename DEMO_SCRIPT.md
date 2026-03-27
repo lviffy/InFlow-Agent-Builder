@@ -1,107 +1,200 @@
-# InFlow Demo Script
+# InFlow — OneHack 3.0 Demo Script
+**Track: AI | Hackathon: OneHack 3.0 (AI & GameFi Edition) | Prize Pool: $16,100 USDT**
 
-## Goal
+---
 
-Record a 3-minute demo that clearly shows the OneChain integrations, agent creation flow, and marketplace story for judging.
+## What Judges Are Looking For
 
-## Prep Checklist
+OneHack 3.0 scores submissions on four criteria. Every scene in this demo is designed to hit at least one of them directly.
 
-- Run the Supabase migration before recording.
-- Make sure the frontend, backend, and n8n agent backend are all running.
-- Fund the demo wallet with enough OCT for one clean transaction.
-- Pre-create or be ready to create one public agent for the marketplace segment.
-- Keep one `.one` example ready, such as `alice.one`.
+| Criterion | What it means | Where InFlow wins |
+|---|---|---|
+| **Originality** | Fresh approach, not a generic clone | AI-to-blockchain workflow pipeline; no comparable tool on OneChain |
+| **Technical execution** | Working MVP, real transactions, no smoke-and-mirrors | Live Move contract deploys and transfers on testnet |
+| **Product usability** | End-to-end UX, not just a tech demo | Natural language chat → on-chain action in one turn |
+| **OneChain integration** | Meaningful use of OneChain-native infra | Move smart contracts, OCT token, `@mysten/sui` SDK, x402 escrow |
 
-## Demo Flow
+> **Submission checklist:** GitHub link ✅ · Demo video ✅ · Built on OneChain Move ✅ · Registered via official Google Form ✅
 
-### Scene 1: Identity and Setup (0:00 - 0:25)
+---
 
-Open the app and show the connected wallet.
+## Project Summary (30-second elevator pitch)
 
-Voiceover:
+> "InFlow is a no-code AI agent platform for OneChain. Instead of writing Move code to deploy tokens, mint NFTs, or automate transfers, you describe what you want in plain English. AI generates a visual workflow, the agent executes it on-chain, and you can expose the whole thing via a chat UI or a REST endpoint — without touching a single line of code."
 
-"This is InFlow on OneChain. Every user gets a persistent on-chain identity layer for agents, including a wallet, DID, and support for ONS names. That gives AI agents a reusable identity and a better user experience from the start."
+---
 
-Point out:
+## Demo Script
 
-- Wallet connection
-- DID in the profile UI
-- ONS name if available
+### Scene 1 — The Problem (0:00 – 0:20)
 
-### Scene 2: Create a GameFi Agent (0:25 - 1:00)
+**Voiceover:**
+> "Building on OneChain today requires Move expertise: writing modules, constructing PTBs, managing TreasuryCaps, handling gas. That knowledge barrier shuts out most developers. InFlow removes it entirely."
 
-Go to the workflow builder and create an agent using the templates or tool graph.
+**On screen:**
+- Brief slide or text overlay: `Move code → 50+ lines to deploy a token`
+- Transition to InFlow landing page at `InFlow.vercel.app`
+- Connect OneWallet — show address in nav
 
-Voiceover:
+---
 
-"We added GameFi-focused agent templates for the hackathon. Instead of building everything manually, creators can start from templates for token rewards, NFT drops, treasury actions, and gameplay flows, then customize the workflow visually."
+### Scene 2 — AI Track: Natural Language to Workflow (0:20 – 1:00)
 
-Point out:
+**Voiceover:**
+> "This is the AI track entry. InFlow takes a plain English prompt and converts it into a complete, executable blockchain workflow using Gemini 2.0 Flash. No config files. No ABIs. No deployment scripts."
 
-- Templates tab
-- Tool nodes relevant to rewards, transfers, NFTs, and price checks
-- Agent name and description
+**On screen:**
+1. Navigate to **Agent Builder → AI Generation tab**
+2. Type the prompt:
+   > `"Deploy a token called PixelGold with symbol PXG and 1 billion supply, then transfer 10,000 PXG to 0xABCD..."`
+3. Hit generate — show the AI processing indicator
+4. **React Flow canvas populates**: two connected nodes appear — `Deploy Move Token → Transfer`
+5. Click each node to show auto-filled parameters: name, symbol, decimals, recipient address
 
-### Scene 3: Gas Sponsorship (1:00 - 1:20)
+**Why this scores on originality + OneChain integration:**
+InFlow is the only no-code AI agent builder targeting OneChain's Move stack. Every node maps directly to a PTB (Programmable Transaction Block) executed through `@mysten/sui`.
 
-Show the gas budget field while saving the agent.
+---
 
-Voiceover:
+### Scene 3 — Visual Builder: Extend the Workflow (1:00 – 1:25)
 
-"Each agent can sponsor execution with a gas budget in OCT. That removes friction for end users and makes the experience feel closer to a real consumer app instead of a raw wallet interface."
+**Voiceover:**
+> "The generated workflow is fully editable. Builders can drag in additional tools — NFT collection deployment, price fetching, extra transfers — and chain them together visually. This is React Flow wired directly to Move smart contract calls."
 
-Point out:
+**On screen:**
+1. Drag the **NFT Collection** tool node from the sidebar
+2. Connect it after the token transfer node
+3. Open the node config panel — fill in: `name: PixelHeroes`, `symbol: PHRO`, `description: GameFi NFT collection`
+4. Click **Save Agent** — show the success toast and agent ID being stored in Supabase
 
-- Gas budget input
-- Saved badge showing sponsored gas
+---
 
-### Scene 4: Live Agent Execution (1:20 - 2:10)
+### Scene 4 — Live Execution: Real On-Chain Transaction (1:25 – 2:10)
 
-Open the chat page for the agent and run a natural-language prompt.
+**Voiceover:**
+> "Now we interact with the saved agent through its chat interface. This isn't a simulation. The agent resolves our natural language prompt, calls the Move factory contracts, signs the transactions with the agent wallet, and broadcasts to OneChain testnet — all in one turn."
 
-Suggested prompt:
+**On screen:**
+1. Navigate to the agent's chat page (`/agent/:id`)
+2. Type:
+   > `"Deploy the PixelGold token and send 500 PXG to 0xABCD..."`
+3. Show the agent response including:
+   - `packageId: 0x...`
+   - `transactionDigest: ABC123...`
+   - Explorer link: `https://explorer-testnet.onelabs.cc/txblock/ABC123...`
+4. **Click the explorer link** — show the confirmed transaction on OneChain testnet with:
+   - Token deployed via `TokenFactory` Move module
+   - Transfer PTB confirmed
+   - Gas paid in OCT
 
-"Send 0.1 OCT to alice.one and show me my USDO balance after that."
+**Why this scores on technical execution:**
+Real Move contract deployment. Real on-chain state. Real transaction hash that anyone can verify.
 
-Voiceover:
+---
 
-"The agent understands natural language, routes to the right tools, resolves ONS names like `alice.one`, and can work with both native OCT and stable assets like USDO. That lets users interact with OneChain features in plain English instead of raw contract calls."
+### Scene 5 — GameFi Angle: Token Rewards Agent (2:10 – 2:35)
 
-Point out:
+**Voiceover:**
+> "For the GameFi track: imagine a game backend that needs to reward players automatically. With InFlow, you create an agent that listens for a REST call, deploys reward tokens, and transfers them — no backend blockchain code needed. The game server sends one API call and InFlow handles everything on-chain."
 
-- Suggested prompt chips
-- Gas sponsorship badge in chat
-- ONS name resolution
-- Transaction or response output
-- USDO support in the result if available
+**On screen:**
+1. Show the **API key** on the My Agents dashboard
+2. Show a short `curl` snippet:
+   ```bash
+   curl -X POST https://your-backend/agent/chat \
+     -H "x-api-key: YOUR_KEY" \
+     -d '{"user_message": "Send 100 PXG to player 0xDEF... as milestone reward"}'
+   ```
+3. Show the JSON response with `transactionDigest` and `explorerUrl`
+4. Briefly show the **x402 payment demo** page — OCT escrow flow for premium tool calls
 
-### Scene 5: Marketplace (2:10 - 2:40)
+---
 
-Open the marketplace and show public agents.
+### Scene 6 — Architecture Callout (2:35 – 2:50)
 
-Voiceover:
+**Voiceover:**
+> "Under the hood: a Next.js frontend, an Express backend using the `@mysten/sui` SDK, two FastAPI services powered by Gemini 2.0 Flash, and Move smart contracts for token and NFT deployment and x402 payment escrow. Everything runs on OneChain."
 
-"Agents are not isolated. Creators can publish them to a marketplace, other users can discover them, inspect supported tools, and clone them into their own workspace. This turns individual workflows into reusable on-chain products."
+**On screen:**
+- Show the architecture diagram from the README (Mermaid graph)
+- Highlight the OneChain layer: `TokenFactory`, `NFTFactory`, `PaymentEscrow` Move modules
+- Point to OCT as the native gas and payment token
 
-Point out:
+---
 
-- Marketplace listing
-- Creator DID or ONS identity
-- Tool chips
-- Clone action
+### Scene 7 — Closing (2:50 – 3:00)
 
-### Scene 6: Closing (2:40 - 3:00)
+**Voiceover:**
+> "InFlow makes OneChain's Move capabilities accessible to anyone — game developers, product teams, non-technical founders — through an AI-first interface. Build an agent in minutes. Ship on-chain in seconds. That's InFlow."
 
-End on the homepage, marketplace, or chat page.
+**On screen:**
+- End on the My Agents dashboard showing the saved agent card with its name, tool count, and API key
+- Fade to InFlow logo
 
-Voiceover:
+---
 
-"InFlow turns OneChain capabilities into reusable AI agents with identity, gas sponsorship, stablecoin support, ONS resolution, GameFi templates, and a publishable marketplace. That makes OneChain easier to use, easier to build on, and easier to scale through agents."
+## Judging Scorecard — How InFlow Maps to Each Criterion
+
+### Originality
+InFlow is the only no-code AI agent platform on OneChain. The combination of Gemini 2.0 function calling + React Flow visual builder + Move PTB execution is novel within the OneChain ecosystem. There is no comparable tool in the current DoraHacks submission pool.
+
+### Technical Execution
+- Move `TokenFactory` and `NFTFactory` modules deployed and verified on testnet
+- PTBs constructed and broadcast via `@mysten/sui` SDK
+- Gemini 2.0 Flash function calling routes natural language to the correct tool endpoint
+- FastAPI + Express microservices architecture with async execution
+- Supabase for agent persistence, Privy/OneWallet for auth
+- x402 protocol OCT escrow implemented and testable on `/payment-demo`
+
+### Product Usability
+- Zero blockchain knowledge required to create and run an agent
+- End-to-end flow: describe → generate → save → chat → transaction confirmed, in under 2 minutes
+- Every transaction surfaces a clickable OneChain explorer link
+- REST API + unique API key allows programmatic access from any backend
+- Responsive UI works on desktop and mobile
+
+### OneChain Ecosystem Integration
+| Component | OneChain usage |
+|---|---|
+| Token deployment | `TokenFactory` Move module, `Coin<T>` standard, `TreasuryCap` |
+| NFT deployment | `NFTFactory` Move module, `Display` + `CollectionCap` |
+| Transfers | PTBs via `@mysten/sui`, native OCT and custom coin types |
+| Payments | x402 protocol, OCT escrow, `PaymentEscrow` Move module |
+| RPC | `https://rpc-testnet.onelabs.cc:443` |
+| Explorer | `https://explorer-testnet.onelabs.cc` |
+| Wallet | OneWallet via `@mysten/dapp-kit` |
+
+---
+
+## Submission Checklist
+
+- [ ] Project registered via official OneHack 3.0 Google Form
+- [ ] DoraHacks BUIDL submission linked to the same project
+- [ ] GitHub repo is public and contains all four services (frontend, backend, AI backend, contracts)
+- [ ] Demo video is ≤ 3 minutes and shows a live on-chain transaction
+- [ ] Explorer link to at least one confirmed testnet transaction included in submission
+- [ ] README documents setup, environment variables, and contract addresses
+- [ ] Track selected: **AI**
+
+---
+
+## Key Links for Submission
+
+| Resource | URL |
+|---|---|
+| Live demo | `https://InFlow.vercel.app/` |
+| GitHub | *(add repo URL)* |
+| Payment contract on explorer | `https://explorer-testnet.onelabs.cc` |
+| Hackathon page | `https://onehackathon.com` |
+| DoraHacks listing | `https://dorahacks.io/hackathon/onehackathon` |
+
+---
 
 ## Recording Tips
 
-- Record at 1080p with browser zoom around 90% to 110%.
-- Preload the pages you will navigate to so the demo feels immediate.
-- Type prompts in advance if you want faster pacing.
-- Keep the final cut close to 3 minutes.
-- If one blockchain action is slow, narrate the expected result and show the relevant UI state.
+- Record at 1080p, browser zoom at 90–100%
+- Preload `/agent/:id` chat page before recording — cold loads can be slow
+- Have the `curl` snippet pre-typed in a terminal so you can paste it instantly
+- If a testnet transaction takes more than 10 seconds, narrate the expected result and cut to the confirmed explorer page recorded separately
+- Final cut target: **under 3 minutes** (OneHack requires a demo video; shorter and tighter is better)
+- Export as MP4, 1080p, under 500MB

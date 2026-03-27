@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
 
 interface PrivateKeySetupModalProps {
@@ -61,6 +61,8 @@ export function PrivateKeySetupModal({
     setIsLoading(true)
 
     try {
+      const supabase = getSupabaseClient()
+
       // Accept base64 or 0x-hex secret keys
       const { getAddressFromPrivateKey } = await import('@/lib/wallet')
       const walletAddress = getAddressFromPrivateKey(privateKey.trim())

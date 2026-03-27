@@ -220,9 +220,19 @@ export default function Marketplace() {
 
                   {/* Name + badges */}
                   <div className="mt-3">
-                    <p className="text-sm font-medium text-foreground leading-tight">
-                      {agent.name}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-foreground leading-tight">
+                        {agent.name}
+                      </p>
+                      {agent.marketplace_source === "template" && (
+                        <Badge
+                          variant="secondary"
+                          className="h-4 px-1.5 py-0 text-[10px] font-medium bg-neutral-800 text-neutral-200 border border-neutral-700"
+                        >
+                          Built-in
+                        </Badge>
+                      )}
+                    </div>
                     {(agent.creator_ons_name || agent.creator_did) && (
                       <p className="mt-0.5 text-[10px] text-muted-foreground/60 flex items-center gap-1">
                         {agent.creator_ons_name ? (

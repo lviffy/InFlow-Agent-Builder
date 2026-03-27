@@ -38,21 +38,31 @@ const PAYMENT_ESCROW_ABI = [
 ];
 
 export class PaymentService {
-  private supabase;
+  private _supabase: ReturnType<typeof createClient> | null = null;
   private _provider: ethers.JsonRpcProvider | null = null;
   private _contract: ethers.Contract | null = null;
   private _backendSigner: ethers.Wallet | null = null;
   private jwtSecret: string;
 
   constructor() {
-    // Initialize Supabase (always available)
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // JWT secret for execution tokens
     this.jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-this';
+  }
+
+  /** Lazy Supabase admin client — created only when first needed */
+  private get supabase() {
+    if (!this._supabase) {
+      const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!supabaseUrl || !serviceRoleKey) {
+        throw new Error('Supabase server environment variables are not configured');
+      }
+
+      this._supabase = createClient(supabaseUrl, serviceRoleKey);
+    }
+
+    return this._supabase;
   }
 
   /** Lazy provider — created only when first needed */

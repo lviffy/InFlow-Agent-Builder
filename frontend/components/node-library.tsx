@@ -192,6 +192,8 @@ interface NodeLibraryProps {
 
 export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
   const [activeTab, setActiveTab] = useState<"tools" | "templates">("tools")
+  const sidebarScrollClass =
+    "flex-1 overflow-y-auto [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:#6b7280_transparent] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-[3px] [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb]:bg-neutral-600/80 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-corner]:bg-transparent"
 
   const onDragStart = (event: React.DragEvent<HTMLDivElement>, toolType: string) => {
     event.dataTransfer.setData("application/reactflow", toolType)
@@ -234,7 +236,7 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
       {/* Tools Tab */}
       {activeTab === "tools" && (
         <>
-          <div className="flex-1 overflow-y-auto">
+          <div className={sidebarScrollClass}>
             <div className="p-2 space-y-1">
               {toolTypes.map((tool) => {
                 const Icon = tool.icon
@@ -274,7 +276,7 @@ export default function NodeLibrary({ onApplyTemplate }: NodeLibraryProps) {
       {/* Templates Tab */}
       {activeTab === "templates" && (
         <>
-          <div className="flex-1 overflow-y-auto">
+          <div className={sidebarScrollClass}>
             <div className="p-2 space-y-4">
               {categoryOrder.map((cat) => {
                 const templates = grouped[cat]

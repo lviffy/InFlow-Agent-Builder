@@ -1,19 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+let supabaseClient: ReturnType<typeof createClient> | null = null
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables:', {
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseKey
-  })
-  throw new Error('Missing Supabase environment variables')
+export function getSupabaseClient() {
+  if (supabaseClient) {
+    return supabaseClient
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase client environment variables are not configured')
+  }
+
+  supabaseClient = createClient(supabaseUrl, supabaseKey)
+  return supabaseClient
 }
-
-console.log('Supabase initialized with URL:', supabaseUrl)
-
-export const supabase = createClient(supabaseUrl, supabaseKey)
 
 export interface User {
   id: string // Sui wallet address (from useCurrentAccount → account.address)
@@ -41,4 +44,3 @@ export interface Agent {
   created_at: string
   updated_at: string
 }
-
