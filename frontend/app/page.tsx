@@ -368,7 +368,7 @@ export default function Home() {
               alt="InFlow Platform"
               width={1200}
               height={700}
-              className="w-full h-auto rounded-2xl ring-1 ring-white/10"
+              className="w-full h-auto rounded-2xl"
               priority
             />
           </motion.div>
